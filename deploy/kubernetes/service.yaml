@@ -1,0 +1,25 @@
+# Web page: cluster-internal. Reach it with `kubectl port-forward` or put an Ingress
+# with HTTPS in front of it (see ingress.example.yaml).
+apiVersion: v1
+kind: Service
+metadata:
+  name: blockhost-web
+  namespace: blockhost
+spec:
+  selector: { app: blockhost }
+  ports:
+    - { name: web, port: 8080, targetPort: web, protocol: TCP }
+---
+# Game traffic: UDP 19132. LoadBalancer works on k3s (ServiceLB), MetalLB and clouds.
+# No load balancer? Change type to NodePort and connect to <node-ip>:<nodePort>.
+apiVersion: v1
+kind: Service
+metadata:
+  name: blockhost-game
+  namespace: blockhost
+spec:
+  type: LoadBalancer
+  selector: { app: blockhost }
+  ports:
+    - { name: game, port: 19132, targetPort: game, protocol: UDP }
+    - { name: game-v6, port: 19133, targetPort: game-v6, protocol: UDP }

@@ -1,0 +1,1461 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="icon" href="data:," />
+<title>Blockhost</title>
+<style>
+  :root {
+    --glass: #2e3134; --glass2: #3c4043;
+    --border: #1a1b1c; --border-h: #5a5f63;
+    --text: #f0f0ef; --muted: #a2a79f; --accent: #3c8527;
+    --green: #52a535; --red: #cc4848; --amber: #d89b2c;
+  }
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, sans-serif; background: #17181a; color: var(--text); max-width: 62rem; margin: 0 auto; padding: 1rem 1rem 4rem; }
+  body::before { content: ""; position: fixed; inset: 0; z-index: -1; opacity: 0.35; background:
+    linear-gradient(rgba(255,255,255,0.016) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.016) 1px, transparent 1px);
+    background-size: 28px 28px; }
+  header { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; padding: 0.8rem 0 1rem; }
+  header h1 { font-size: 1.25rem; margin: 0; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; text-shadow: 2px 2px 0 rgba(0,0,0,0.5); }
+  .pill { display: inline-flex; align-items: center; gap: 0.45rem; border-radius: 3px; padding: 0.32rem 0.9rem; font-size: 0.85rem; background: var(--glass); border: 2px solid var(--border); box-shadow: inset 0 2px 0 rgba(255,255,255,0.07); }
+  .dot { width: 10px; height: 10px; border-radius: 2px; background: var(--muted); }
+  .dot.on { background: var(--green); box-shadow: 0 0 8px var(--green); }
+  .dot.busy { background: var(--amber); box-shadow: 0 0 8px var(--amber); }
+  .dot.off { background: var(--red); }
+  nav { display: flex; gap: 0.3rem; margin: 0.6rem 0 1.2rem; padding: 0.3rem; border-radius: 3px; background: var(--glass); border: 2px solid var(--border); width: fit-content; box-shadow: inset 0 2px 0 rgba(255,255,255,0.06); }
+  nav button { background: none; border: 2px solid transparent; color: var(--muted); font-size: 0.93rem; font-weight: 600; padding: 0.45rem 1.1rem; cursor: pointer; border-radius: 2px; }
+  nav button.active { color: #fff; background: var(--accent); border-color: var(--border); box-shadow: inset 0 2px 0 rgba(255,255,255,0.22), inset 0 -3px 0 rgba(0,0,0,0.3); }
+  .tab { display: none; } .tab.active { display: block; }
+  .card { border-radius: 4px; padding: 1.15rem 1.3rem; margin-bottom: 1rem; background: var(--glass); border: 2px solid var(--border); box-shadow: inset 0 2px 0 rgba(255,255,255,0.07), 0 4px 0 rgba(0,0,0,0.3); }
+  .card h3 { margin: 0 0 0.3rem; font-size: 1rem; font-weight: 600; }
+  .hint { color: var(--muted); font-size: 0.85rem; margin: 0.2rem 0 0.8rem; line-height: 1.5; }
+  .hint a { color: #9fe07a; }
+  .row { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; }
+  input[type=text], input[type=password], select { background: #1d1f21; border: 2px solid var(--border); color: var(--text); border-radius: 3px; padding: 0.55rem 0.75rem; font-size: 0.92rem; box-shadow: inset 0 2px 0 rgba(0,0,0,0.35); }
+  input[type=text], input[type=password] { min-width: 14rem; }
+  .rule a, .card a { color: #9fe07a; }
+  input[type=text]:focus, input[type=password]:focus, select:focus { outline: none; border-color: var(--accent); }
+  select { appearance: none; -webkit-appearance: none; padding-right: 2.1rem; min-width: 9.5rem; cursor: pointer;
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="%2393a1b5" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>');
+    background-repeat: no-repeat; background-position: right 0.7rem center; }
+  select option { background: #141a26; color: #eef2f8; }
+  input[type=checkbox] { accent-color: var(--accent); width: 1.05rem; height: 1.05rem; cursor: pointer; }
+  .field { display: flex; flex-direction: column; gap: 0.35rem; }
+  .field > span { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); }
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: 0.85rem; }
+  .wizsteps { display: flex; gap: 0.4rem; margin: 0.4rem 0 1.1rem; }
+  .wizsteps .st { flex: 1; height: 4px; border-radius: 2px; background: var(--border); transition: background 0.2s; }
+  .wizsteps .st.done { background: var(--accent); }
+  .rule { display: flex; align-items: center; gap: 0.6rem; padding: 0.5rem 0.7rem; border: 2px solid var(--border); border-radius: 3px; background: #26282a; cursor: pointer; font-size: 0.88rem; }
+  .rule:hover { border-color: var(--border-h); }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr)); gap: 0.7rem; }
+  .stat { border: 2px solid var(--border); border-radius: 3px; padding: 0.7rem 0.9rem; background: #26282a; box-shadow: inset 0 2px 0 rgba(255,255,255,0.05); }
+  .stat .k { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); margin-bottom: 0.25rem; }
+  .stat .v { font-size: 1.05rem; font-weight: 600; }
+  .stat .s { font-size: 0.76rem; color: var(--muted); margin-top: 0.15rem; }
+  button.btn { display: inline-flex; align-items: center; gap: 0.4rem; border: 2px solid var(--border); background: #54585c; color: #fff; border-radius: 3px; padding: 0.5rem 0.95rem; font-size: 0.88rem; font-weight: 600; cursor: pointer; box-shadow: inset 0 2px 0 rgba(255,255,255,0.18), inset 0 -3px 0 rgba(0,0,0,0.35); text-shadow: 1px 1px 0 rgba(0,0,0,0.4); }
+  button.btn:hover { background: #63686d; }
+  button.btn:active { box-shadow: inset 0 -2px 0 rgba(255,255,255,0.1), inset 0 3px 0 rgba(0,0,0,0.3); }
+  button.btn.primary { background: var(--accent); }
+  button.btn.primary:hover { background: #47991f; }
+  button.btn.danger { background: #8c3a34; }
+  button.btn.danger:hover { background: #a2443d; }
+  button.btn.icon { padding: 0.45rem 0.55rem; }
+  button.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  button.btn svg { flex: none; }
+  #opbar { display: none; border-radius: 3px; padding: 0.75rem 1rem; margin-bottom: 1rem; font-size: 0.92rem; background: #4a3c1b; border: 2px solid var(--border); box-shadow: inset 0 2px 0 rgba(255,255,255,0.08); }
+  #opbar.err { background: #512d2a; }
+  #opbar.ok { background: #2c4420; }
+  .spin { display: inline-block; width: 0.85em; height: 0.85em; border: 2px solid transparent; border-top-color: currentColor; border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: -0.1em; margin-right: 0.45rem; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .world { display: flex; align-items: center; gap: 1rem; border-radius: 3px; padding: 0.85rem 1rem; margin-bottom: 0.6rem; flex-wrap: wrap; background: #26282a; border: 2px solid var(--border); }
+  .world.active-world { border-color: var(--accent); background: linear-gradient(90deg, rgba(60,133,39,0.18), #26282a 45%); }
+  .world .meta { flex: 1; min-width: 12rem; }
+  .world .name { font-weight: 600; font-size: 1rem; }
+  .world .sub { color: var(--muted); font-size: 0.8rem; margin-top: 0.18rem; }
+  .tag { display: inline-block; font-size: 0.67rem; font-weight: 700; letter-spacing: 0.05em; border-radius: 2px; padding: 0.15rem 0.5rem; margin-left: 0.45rem; vertical-align: 0.1em; border: 1px solid rgba(0,0,0,0.4); }
+  .tag.active { background: #2c4420; color: #9fe07a; }
+  .tag.src { background: #27405c; color: #9ec8f0; }
+  .tag.warn { background: #4a3c1b; color: #eec36a; cursor: pointer; }
+  .tag.err { background: #512d2a; color: #e89b94; }
+  #drop { border: 2px dashed var(--border-h); border-radius: 4px; padding: 1.4rem; text-align: center; color: var(--muted); background: #26282a; }
+  #drop.hot { border-color: var(--accent); background: #2c3a26; color: var(--text); }
+  #drop .big { font-size: 0.98rem; color: var(--text); margin-bottom: 0.3rem; }
+  progress { width: 100%; height: 7px; border-radius: 6px; margin-top: 0.7rem; accent-color: var(--accent); }
+  .pathbox { display: flex; gap: 0.4rem; align-items: center; background: #1d1f21; border: 2px solid var(--border); border-radius: 3px; padding: 0.45rem 0.65rem; margin-top: 0.6rem; font-family: monospace; font-size: 0.78rem; overflow-x: auto; white-space: nowrap; }
+  .evt { display: flex; align-items: center; gap: 0.7rem; padding: 0.45rem 0.2rem; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+  .evt .t { color: var(--muted); font-size: 0.78rem; min-width: 8.5rem; }
+  .evt .badge { font-size: 0.68rem; font-weight: 700; border-radius: 6px; padding: 0.16rem 0.5rem; min-width: 3.6rem; text-align: center; }
+  .badge.join { background: #2c4420; color: #9fe07a; }
+  .badge.leave { background: #512d2a; color: #e89b94; }
+  .badge.spawn { background: #27405c; color: #9ec8f0; }
+  #rawlog { background: #121314; border: 2px solid var(--border); border-radius: 3px; padding: 0.85rem; font-family: monospace; font-size: 0.74rem; line-height: 1.5; max-height: 24rem; overflow-y: auto; white-space: pre-wrap; word-break: break-all; color: #9fa8a2; }
+  .player { display: flex; align-items: center; justify-content: space-between; border-radius: 3px; padding: 0.6rem 1rem; margin-bottom: 0.5rem; background: #26282a; border: 2px solid var(--border); }
+  .empty { color: var(--muted); font-style: italic; padding: 0.8rem 0.2rem; }
+  table.packs { width: 100%; border-collapse: collapse; font-size: 0.89rem; }
+  table.packs th { text-align: left; color: var(--muted); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; padding: 0.4rem 0.6rem; border-bottom: 1px solid var(--border); }
+  table.packs td { padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  table.packs tr:hover td { background: rgba(255,255,255,0.03); }
+  dialog { background: #2e3134; color: var(--text); border: 2px solid var(--border); border-radius: 4px; padding: 1.4rem; max-width: 26rem; box-shadow: inset 0 2px 0 rgba(255,255,255,0.07), 0 10px 0 rgba(0,0,0,0.35); }
+  dialog::backdrop { background: rgba(8,9,10,0.75); }
+  dialog p { color: var(--muted); font-size: 0.9rem; }
+  #wizDlg[open] { display: flex; flex-direction: column; }
+  #modDlg[open] { display: flex; flex-direction: column; }
+  .cats { display: flex; gap: 0.3rem; flex-wrap: wrap; margin: 0.2rem 0 0.8rem; }
+  .cats button { background: #26282a; border: 2px solid var(--border); color: var(--muted); font-weight: 600; font-size: 0.85rem; padding: 0.35rem 0.8rem; border-radius: 2px; cursor: pointer; }
+  .cats button.on { background: var(--accent); color: #fff; }
+  .msent { border: 2px solid var(--border); border-radius: 3px; background: #26282a; padding: 0.6rem 0.8rem; margin-bottom: 0.5rem; }
+  .msent.chg { border-color: var(--amber); }
+  .msent .ttl { font-weight: 600; font-size: 0.92rem; }
+  .msent .sub { color: var(--muted); font-size: 0.72rem; font-family: monospace; margin-bottom: 0.4rem; word-break: break-all; }
+  .mf { display: grid; grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr)); gap: 0.4rem 0.9rem; }
+  .mf label { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; font-size: 0.84rem; }
+  .mf input[type=number] { width: 6rem; background: #1d1f21; border: 2px solid var(--border); color: var(--text); border-radius: 3px; padding: 0.3rem 0.45rem; font-size: 0.88rem; }
+  .mf input.dirty, .mf input.chg { border-color: var(--amber); }
+  .mf .was { color: var(--amber); font-size: 0.7rem; margin-left: 0.3rem; cursor: pointer; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Blockhost</h1>
+  <span class="pill"><span class="dot" id="srvdot"></span><span id="srvtext">checking…</span></span>
+  <span class="row" style="margin-left:auto; gap:0.4rem">
+    <button class="btn" id="updateBtn" style="display:none" onclick="updateServer()">Update available</button>
+    <button class="btn" id="powerBtn" onclick="togglePower()">Stop server</button>
+    <button class="btn" id="restartBtn" onclick="restartServer()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"/></svg>Restart</button>
+    <button class="btn" title="Account" onclick="openAccount()">Account</button>
+  </span>
+</header>
+
+<div id="gate" style="display:none">
+  <div class="card" style="max-width:30rem; margin:2rem auto">
+    <div id="gateSetup" style="display:none">
+      <h3>Welcome to Blockhost</h3>
+      <p class="hint">Create the admin password for this server. You'll need the setup code that Blockhost printed when it started (also saved as <code>setup-code.txt</code> in the data folder).</p>
+      <div class="field"><span>Setup code</span><input type="text" id="setupCode" autocomplete="off" /></div>
+      <div class="field" style="margin-top:0.7rem"><span>New password (8+ characters)</span><input type="password" id="setupPw" autocomplete="new-password" /></div>
+      <div class="field" style="margin-top:0.7rem"><span>Repeat password</span><input type="password" id="setupPw2" autocomplete="new-password" onkeydown="if(event.key==='Enter')doSetup()" /></div>
+      <div class="row" style="margin-top:1rem"><button class="btn primary" onclick="doSetup()">Create password</button><span class="hint" id="setupMsg" style="margin:0"></span></div>
+    </div>
+    <div id="gateLogin" style="display:none">
+      <h3>Sign in</h3>
+      <div class="field"><span>Password</span><input type="password" id="loginPw" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()" /></div>
+      <div class="row" style="margin-top:1rem"><button class="btn primary" onclick="doLogin()">Sign in</button><span class="hint" id="loginMsg" style="margin:0"></span></div>
+    </div>
+  </div>
+</div>
+
+<div id="installCard" class="card" style="display:none">
+  <h3>Download the Bedrock server</h3>
+  <p class="hint">Blockhost runs Mojang's official <strong>Minecraft Bedrock Dedicated Server</strong>. It isn't included with Blockhost, so it's downloaded from minecraft.net (about 100 MB).</p>
+  <p class="hint" id="installUnsupported" style="color:#e89b94; display:none"></p>
+  <label class="rule" style="margin:0.6rem 0"><input type="checkbox" id="eulaBox" /> <span>I agree to the <a id="eulaLink" target="_blank" rel="noopener">Minecraft End User License Agreement</a> and <a id="privacyLink" target="_blank" rel="noopener">Privacy Policy</a>.</span></label>
+  <button class="btn primary" id="installBtn" onclick="installServer()">Download and start the server</button>
+</div>
+
+<dialog id="acctDlg">
+  <h3 style="margin-top:0">Account</h3>
+  <p class="hint">Blockhost <span id="acctVer"></span></p>
+  <div class="field"><span>Current password</span><input type="password" id="pwCur" autocomplete="current-password" /></div>
+  <div class="field" style="margin-top:0.6rem"><span>New password</span><input type="password" id="pwNew" autocomplete="new-password" /></div>
+  <p class="hint" id="pwMsg"></p>
+  <div class="row" style="justify-content:space-between; margin-top:0.6rem">
+    <button class="btn danger" onclick="doLogout()">Sign out</button>
+    <span class="row"><button class="btn" onclick="$('acctDlg').close()">Close</button><button class="btn primary" onclick="changePw()">Change password</button></span>
+  </div>
+</dialog>
+
+<div id="opbar"></div>
+
+<nav>
+  <button class="active" data-tab="worlds" onclick="showTab(this)">Worlds</button>
+  <button data-tab="addons" onclick="showTab(this)">Mods</button>
+  <button data-tab="activity" onclick="showTab(this)">Activity</button>
+  <button data-tab="players" onclick="showTab(this)">Players</button>
+  <button data-tab="world" onclick="showTab(this)">World</button>
+</nav>
+
+<!-- ================= WORLDS ================= -->
+<div class="tab active" id="tab-worlds">
+  <div class="card">
+    <h3>Server dashboard</h3>
+    <div class="stats" id="dash"><div class="empty">Loading…</div></div>
+  </div>
+
+  <div class="card">
+    <h3>Add a world from this computer</h3>
+    <p class="hint">Pick the world <strong>folder</strong> straight from your Minecraft save directory and it gets packaged and uploaded for you. You can also drop a <code>.mcworld</code> file anywhere on this box.</p>
+    <div id="drop">
+      <div class="big">Drag &amp; drop a world folder or .mcworld here</div>
+      <div>or</div>
+      <div class="row" style="justify-content:center; margin-top:0.6rem">
+        <button class="btn primary" onclick="pickFolder()">Choose world folder…</button>
+        <button class="btn" onclick="pickFile()">Choose .mcworld file…</button>
+      </div>
+      <input type="file" id="folderInput" webkitdirectory style="display:none" />
+      <input type="file" id="fileInput" accept=".mcworld,.zip" style="display:none" />
+      <progress id="upprog" max="100" value="0" style="display:none"></progress>
+      <div id="upmsg" class="hint" style="margin-top:0.5rem"></div>
+    </div>
+    <p class="hint" style="margin-top:0.6rem">To get a world out of the game: in Minecraft, edit the world and choose <strong>Export World</strong>. That saves a <code>.mcworld</code> file you can upload here.</p>
+  </div>
+
+  <div class="card">
+    <h3>Start a fresh world</h3>
+    <p class="hint">Walks you through seed, game settings, cheats and rules, performance and mods. Your current world gets saved to the library first.</p>
+    <button class="btn primary" onclick="openWizard()">Create new world…</button>
+  </div>
+
+  <div class="card">
+    <h3>World library</h3>
+    <p class="hint">Switching stops the server for about a minute and saves the current world first. Nothing is lost until you hit delete.</p>
+    <div id="worlds"><div class="empty">Loading…</div></div>
+  </div>
+</div>
+
+<!-- ================= ADD-ONS ================= -->
+<div class="tab" id="tab-addons">
+  <div class="card">
+    <h3>Mod library</h3>
+    <p class="hint">Upload community mods as <code>.mcaddon</code> or <code>.mcpack</code> files, then assign them per world with the Mods button on each world card. Browse &amp; download from
+      <a href="https://mcpedl.com/category/mods/" target="_blank" rel="noopener">MCPEDL</a> or
+      <a href="https://www.curseforge.com/minecraft-bedrock/addons" target="_blank" rel="noopener">CurseForge</a>,
+      then drop the file here. <strong>Marketplace mods won't work here.</strong> They are locked to the game client that bought them.</p>
+    <div class="row">
+      <button class="btn primary" onclick="$('packInput').click()">Upload .mcaddon / .mcpack… (multiple OK)</button>
+      <input type="file" id="packInput" accept=".mcaddon,.mcpack,.zip" multiple style="display:none" />
+    </div>
+    <div id="upqueue" style="margin-top:0.8rem"></div>
+    <h3 style="margin-top:1.2rem">In library</h3>
+    <div class="row" style="margin-bottom:0.7rem">
+      <input type="text" id="packSearch" placeholder="Search mods…" oninput="packQuery=this.value.toLowerCase(); if(LAST) renderPacks(LAST)" />
+      <select id="packFilter" onchange="packFilter=this.value; if(LAST) renderPacks(LAST)">
+        <option value="all">All types</option>
+        <option value="behavior">Behavior packs</option>
+        <option value="resource">Resource packs</option>
+        <option value="issues">Missing dependencies</option>
+        <option value="dupes">Old versions (duplicates)</option>
+      </select>
+      <label class="hint" style="margin:0; display:flex; align-items:center; gap:0.35rem; cursor:pointer"><input type="checkbox" id="showOld" onchange="showOld=this.checked; if(LAST) renderPacks(LAST)" /> show old versions</label>
+      <span class="hint" id="packCount" style="margin:0"></span>
+      <button class="btn" id="cleanupBtn" style="margin-left:auto; display:none" onclick="cleanupDupes()">Remove unused old versions</button>
+    </div>
+    <div id="packs"><div class="empty">Loading…</div></div>
+  </div>
+</div>
+
+<!-- ================= ACTIVITY ================= -->
+<div class="tab" id="tab-activity">
+  <div class="card">
+    <h3>Problems</h3>
+    <p class="hint">Warnings and errors from the server log. Missing packs, script errors and startup failures show up here.</p>
+    <div id="issues"><div class="empty">Loading…</div></div>
+  </div>
+  <div class="card">
+    <h3>Player activity</h3>
+    <div id="events"><div class="empty">Loading…</div></div>
+  </div>
+  <div class="card">
+    <h3>Server log <button class="btn" style="float:right; font-size:0.75rem; padding:0.25rem 0.7rem" onclick="loadLogs(true)">Refresh</button></h3>
+    <div id="rawlog">Loading…</div>
+  </div>
+</div>
+
+<!-- ================= PLAYERS ================= -->
+<div class="tab" id="tab-players">
+  <div class="card">
+    <h3>Allow list</h3>
+    <p class="hint">Only these gamertags can join. Use the exact Xbox or Microsoft account name. Changes apply right away, no restart needed.</p>
+    <div class="row" style="margin-bottom:0.9rem">
+      <input type="text" id="player" placeholder="Gamertag" maxlength="32" onkeydown="if(event.key==='Enter')addPlayer()" />
+      <button class="btn primary" onclick="addPlayer()">Add player</button>
+    </div>
+    <div id="players"><div class="empty">Loading…</div></div>
+  </div>
+</div>
+
+<!-- ================= WORLD ================= -->
+<div class="tab" id="tab-world">
+  <div class="card">
+    <h3>Right now <button class="btn" style="float:right; font-size:0.75rem; padding:0.25rem 0.7rem" onclick="loadWorld(true)">Refresh</button></h3>
+    <p class="hint">Live controls. These take effect immediately on the running server.</p>
+    <div id="worldNow"><div class="empty">Loading…</div></div>
+  </div>
+  <div class="card">
+    <h3>Game rules (cheats)</h3>
+    <p class="hint">Values are read from the live server. Changes apply instantly and are remembered for this world so they survive a restart. <strong>Random tick speed</strong> above 1 multiplies crop/fire/grass/leaf processing in every loaded chunk — a common cause of lag on modded servers.</p>
+    <div id="worldRules"><div class="empty">Loading…</div></div>
+  </div>
+  <div class="card">
+    <h3>Server defaults</h3>
+    <p class="hint">Difficulty applies live and is saved. Default game mode is a server setting and needs a restart (use the Worlds tab).</p>
+    <div id="worldDefaults"><div class="empty">Loading…</div></div>
+  </div>
+  <div class="card">
+    <h3>Console</h3>
+    <p class="hint">Run any server command as the console (no slash needed). Server management commands (stop, allowlist, permissions) are handled by the other tabs and are blocked here.</p>
+    <div class="row" style="margin-bottom:0.6rem">
+      <input type="text" id="consoleCmd" placeholder="give @a diamond 5" maxlength="512" style="flex:1; font-family:monospace" onkeydown="if(event.key==='Enter')runConsole(); if(event.key==='ArrowUp'){event.preventDefault();consoleHist(-1)} if(event.key==='ArrowDown'){event.preventDefault();consoleHist(1)}" />
+      <button class="btn primary" onclick="runConsole()">Run</button>
+    </div>
+    <div id="consoleOut" style="background:#1d1f21; border:2px solid var(--border); border-radius:3px; padding:0.6rem 0.8rem; font-family:monospace; font-size:0.78rem; min-height:4rem; max-height:16rem; overflow-y:auto; white-space:pre-wrap"><span class="hint">Output appears here.</span></div>
+  </div>
+</div>
+
+<dialog id="confirmDlg">
+  <h3 id="dlgTitle" style="margin-top:0"></h3>
+  <p id="dlgBody"></p>
+  <div class="row" style="justify-content:flex-end; margin-top:1rem">
+    <button class="btn" onclick="dlgClose(false)">Cancel</button>
+    <button class="btn primary" id="dlgOk" onclick="dlgClose(true)">Confirm</button>
+  </div>
+</dialog>
+
+<dialog id="packDlg" style="max-width:32rem; width:92vw">
+  <h3 style="margin-top:0">Mods for <span id="packDlgWorld"></span></h3>
+  <p class="hint" id="packDlgHint"></p>
+  <div id="packDlgList" style="max-height:50vh; overflow-y:auto"></div>
+  <div class="row" style="justify-content:flex-end; margin-top:1rem">
+    <button class="btn" onclick="$('packDlg').close()">Cancel</button>
+    <button class="btn primary" onclick="applyPacks()">Apply</button>
+  </div>
+</dialog>
+
+<dialog id="wizDlg" style="max-width:40rem; width:94vw; max-height:88vh">
+  <h3 style="margin-top:0">New world: <span id="wizStepTitle"></span></h3>
+  <div class="wizsteps" id="wizSteps"></div>
+  <div id="wizBody" style="min-height:14rem; overflow-y:auto; flex:1"></div>
+  <div class="row" style="justify-content:space-between; margin-top:1.1rem">
+    <button class="btn" onclick="$('wizDlg').close()">Cancel</button>
+    <span class="row">
+      <button class="btn" id="wizBackBtn" onclick="wizStep(-1)">Back</button>
+      <button class="btn primary" id="wizNextBtn" onclick="wizStep(1)">Next</button>
+    </span>
+  </div>
+</dialog>
+
+<dialog id="modDlg" style="max-width:52rem; width:95vw; max-height:90vh">
+  <h3 style="margin-top:0">Settings: <span id="modDlgName"></span></h3>
+  <p class="hint" style="margin-top:0">Changes apply to every world using this mod and are kept when mods are re-applied. The original value shows in amber; click it to put it back. Restart the server to apply.</p>
+  <div class="cats" id="modCats"></div>
+  <div class="row" style="margin-bottom:0.6rem">
+    <input type="text" id="modSearch" placeholder="Search…" oninput="modQuery=this.value.toLowerCase(); modLimit=60; renderModEntries()" />
+    <label class="hint" style="margin:0; display:flex; align-items:center; gap:0.35rem; cursor:pointer"><input type="checkbox" id="modOnlyChg" onchange="modLimit=60; renderModEntries()" /> changed only</label>
+    <span class="hint" id="modCount" style="margin:0"></span>
+  </div>
+  <div id="modList" style="overflow-y:auto; flex:1; min-height:12rem"></div>
+  <div class="row" style="margin-top:0.9rem">
+    <span id="modMsg" class="hint" style="margin:0 auto 0 0"></span>
+    <button class="btn danger" id="modResetBtn" onclick="modReset()">Reset this tab</button>
+    <button class="btn" onclick="modClose()">Close</button>
+    <button class="btn primary" id="modSaveBtn" onclick="modSave()" disabled>Save</button>
+  </div>
+</dialog>
+
+<dialog id="fileDlg" style="max-width:48rem; width:95vw">
+  <h3 style="margin-top:0">Pack files for <span id="fileDlgWorld"></span></h3>
+  <p class="hint">Edit config values inside this world's embedded packs (JSON is validated on save). Changes to the <strong>active</strong> world need a server restart to take effect.</p>
+  <div class="row" style="margin-bottom:0.5rem">
+    <button class="btn" id="fileUpBtn" onclick="fileUp()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 15l-6-6-6 6"/></svg>Up</button>
+    <span style="font-family:monospace; font-size:0.8rem" id="filePath">/</span>
+  </div>
+  <div id="fileList" style="max-height:30vh; overflow-y:auto"></div>
+  <div id="fileEditWrap" style="display:none">
+    <textarea id="fileEdit" spellcheck="false" style="width:100%; height:40vh; background:rgba(0,0,0,0.35); color:var(--text); border:1px solid var(--border); border-radius:9px; font-family:monospace; font-size:0.8rem; padding:0.6rem"></textarea>
+    <div class="row" style="justify-content:flex-end; margin-top:0.5rem">
+      <span id="fileMsg" class="hint" style="margin-right:auto"></span>
+      <button class="btn primary" onclick="saveFile()">Save</button>
+    </div>
+  </div>
+  <div class="row" style="justify-content:flex-end; margin-top:1rem">
+    <button class="btn" onclick="$('fileDlg').close()">Close</button>
+  </div>
+</dialog>
+
+<script>
+// Every request carries X-Blockhost; the server rejects writes without it (CSRF guard).
+const _fetch = window.fetch.bind(window);
+window.fetch = (url, opts = {}) => {
+  const headers = new Headers(opts.headers || {});
+  headers.set("X-Blockhost", "1");
+  return _fetch(url, { ...opts, headers, credentials: "same-origin" }).then(r => { if (r.status === 401 && !String(url).startsWith("auth/")) showGate(); return r; });
+};
+const _xhrOpen = XMLHttpRequest.prototype.open;
+XMLHttpRequest.prototype.open = function (...a) { _xhrOpen.apply(this, a); this.setRequestHeader("X-Blockhost", "1"); };
+const $ = (id) => document.getElementById(id);
+const esc = (s) => { const d = document.createElement("div"); d.textContent = s ?? ""; return d.innerHTML; };
+const fmtBytes = (n) => n > 1e9 ? (n/1e9).toFixed(2)+" GB" : n > 1e6 ? (n/1e6).toFixed(1)+" MB" : Math.round(n/1e3)+" KB";
+const ver = (v) => Array.isArray(v) ? v.join(".") : String(v ?? "?");
+const IC = {
+  trash: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>',
+  play: '<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>',
+  down: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v12m0 0l-5-5m5 5l5-5M5 21h14"/></svg>',
+  puzzle: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 7h4a1 1 0 0 1 1 1v4m0 4v3a1 1 0 0 1-1 1h-4m-4 0H6a1 1 0 0 1-1-1v-4m0-4V8a1 1 0 0 1 1-1h4"/><circle cx="12" cy="12" r="2.5"/></svg>',
+  file: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>',
+  folder: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>',
+  warn: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0zM12 9v4m0 4h.01"/></svg>',
+  check: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg>',
+  gear: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M4.2 4.2l2.1 2.1m11.4 11.4 2.1 2.1M2 12h3m14 0h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>',
+  search: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>',
+};
+let opWasRunning = false, dlgResolve = null, LAST = null, INSTALL = null, STARTED = false;
+let DASH = null, WORLD = null, consoleHistory = [], consoleIdx = 0, showOld = false;
+
+function showBar(text, cls) {
+  const bar = $("opbar");
+  bar.style.display = "block"; bar.className = cls || "";
+  bar.textContent = text;
+}
+
+async function apiJson(path) {
+  const resp = await fetch(path, { headers: { "Accept": "application/json" } });
+  if (resp.status === 401) throw new Error("auth redirect");
+  if (!resp.ok) {
+    let t = {}; try { t = await resp.json(); } catch {}
+    throw new Error(t.error || ("HTTP " + resp.status));
+  }
+  return resp.json();
+}
+
+function showTab(btn) {
+  document.querySelectorAll("nav button").forEach(b => b.classList.toggle("active", b === btn));
+  document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.id === "tab-" + btn.dataset.tab));
+  if (btn.dataset.tab === "activity") loadLogs();
+  if (btn.dataset.tab === "world") loadWorld();
+}
+
+function ask(title, body, okLabel="Confirm", danger=false) {
+  $("dlgTitle").textContent = title; $("dlgBody").textContent = body;
+  const ok = $("dlgOk"); ok.textContent = okLabel;
+  ok.className = "btn " + (danger ? "danger" : "primary");
+  $("confirmDlg").showModal();
+  return new Promise(res => dlgResolve = res);
+}
+function dlgClose(v) { $("confirmDlg").close(); if (dlgResolve) { dlgResolve(v); dlgResolve = null; } }
+
+async function refresh() {
+  let s;
+  try { s = await apiJson("api/state"); } catch (e) {
+    if (String(e).includes("auth redirect")) return;
+    showBar("Can't reach the admin API: " + e.message, "err");
+    ["worlds","packs","players"].forEach(id => { if ($(id).textContent.includes("Loading")) $(id).innerHTML = '<div class="empty">Unavailable: ' + esc(e.message) + '</div>'; });
+    return;
+  }
+  if (!s || !s.server) return;
+  LAST = s;
+  const sections = { status: renderStatus, worlds: renderWorlds, packs: renderPacks, players: renderPlayers };
+  for (const [name, fn] of Object.entries(sections)) {
+    try { fn(s); } catch (e) {
+      console.error(name, e);
+      if (name !== "status") $(name).innerHTML = '<div class="empty">Display error in ' + name + ': ' + esc(e.message) + '</div>';
+    }
+  }
+}
+
+function renderStatus(s) {
+  const dot = $("srvdot");
+  if (s.op.running) { dot.className = "dot busy"; $("srvtext").textContent = s.op.kind + ": " + s.op.step; }
+  else if (s.server.pods > 0 && s.server.ready < s.server.pods) { dot.className = "dot busy"; $("srvtext").textContent = "Server starting or unhealthy, see the Activity tab"; }
+  else if (s.server.pods > 0) { dot.className = "dot on"; $("srvtext").textContent = "Server online"; }
+  else { dot.className = "dot off"; $("srvtext").textContent = "Server stopped"; }
+  $("restartBtn").disabled = s.op.running || !s.server.pods;
+  const pb = $("powerBtn");
+  pb.disabled = s.op.running || !s.server.installed;
+  pb.textContent = s.server.want ? "Stop server" : "Start server";
+  pb.className = "btn" + (s.server.want ? "" : " primary");
+
+  const bar = $("opbar");
+  if (s.op.running) {
+    opWasRunning = true;
+    bar.style.display = "block"; bar.className = "";
+    bar.innerHTML = '<span class="spin"></span>' + esc(s.op.kind) + ": " + esc(s.op.step) + "…";
+  } else if (s.op.error) {
+    bar.style.display = "block"; bar.className = "err";
+    bar.textContent = s.op.kind + " failed: " + s.op.error;
+  } else if (opWasRunning) {
+    checkInstall();
+    bar.style.display = "block"; bar.className = "ok"; bar.textContent = "Done";
+    setTimeout(() => { bar.style.display = "none"; opWasRunning = false; }, 4000);
+  }
+}
+
+function renderWorlds(s) {
+  $("worlds").innerHTML = s.worlds.map((w, i) => `
+    <div class="world ${w.active ? "active-world" : ""}">
+      <div class="meta">
+        <div class="name">${esc(w.name)}
+          ${w.active ? '<span class="tag active">ACTIVE</span>' : ""}
+          <span class="tag src">${esc(w.source)}</span>
+          ${w.packs_missing ? `<span class="tag err">${w.packs_missing} MISSING PACKS</span>` : ""}
+        </div>
+        <div class="sub">${fmtBytes(w.size)} · saved ${esc((w.created || "").slice(0,10) || "n/a")}${w.seed ? " · seed " + esc(w.seed) : ""} · ${w.packs_assigned} mod${w.packs_assigned === 1 ? "" : "s"}</div>
+      </div>
+      <div class="row">
+        ${w.active ? "" : `<button class="btn primary" ${s.op.running ? "disabled" : ""} onclick="activateIdx(${i})">${IC.play}Play this world</button>`}
+        <button class="btn" onclick="openPacksIdx(${i})">${IC.puzzle}Mods</button>
+        <button class="btn" onclick="openFilesIdx(${i})">${IC.file}Files</button>
+        <a href="worlds/export?id=${encodeURIComponent(w.id)}"><button class="btn">${IC.down}Download</button></a>
+        ${w.active ? "" : `<button class="btn danger icon" title="Delete world" onclick="delIdx(${i})">${IC.trash}</button>`}
+      </div>
+    </div>`).join("") || '<div class="empty">No saved worlds yet. The world running on the server gets saved here the first time you switch.</div>';
+}
+
+function renderPacks(s) {
+  const all = s.packs || [];
+  const dupes = all.filter(p => p.superseded);
+  const removable = dupes.filter(p => !p.in_use).length;
+  const btn = $("cleanupBtn");
+  btn.style.display = removable ? "" : "none";
+  btn.innerHTML = `${IC.trash}Remove ${removable} unused old version${removable === 1 ? "" : "s"}`;
+  const visible = all.map((p, i) => ({ p, i })).filter(({ p }) => {
+    if (packFilter === "behavior" && p.type !== "behavior") return false;
+    if (packFilter === "resource" && p.type !== "resource") return false;
+    if (packFilter === "issues" && !(p.missing_deps || []).length) return false;
+    if (packFilter === "dupes" && !p.superseded) return false;
+    if (packFilter !== "dupes" && !showOld && p.superseded) return false;
+    if (packQuery && !p.name.toLowerCase().includes(packQuery)) return false;
+    return true;
+  });
+  // one row per mod: BP + RP halves (and any old versions) collapse together
+  const groups = new Map();
+  for (const row of visible) {
+    const key = row.p.mod || row.p.name.toLowerCase();
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(row);
+  }
+  const rows = [...groups.values()];
+  $("packCount").textContent = `${rows.length} mod${rows.length === 1 ? "" : "s"} (${visible.length} of ${all.length} packs)` + (dupes.length && !showOld && packFilter !== "dupes" ? ` · ${dupes.length} old version${dupes.length === 1 ? "" : "s"} hidden` : "");
+  const half = ({ p, i }) => {
+    const missing = (p.missing_deps || []).length;
+    const tags = (p.superseded ? ` <span class="tag warn" title="A newer version is in the library">old</span>` : "") + (p.superseded && p.in_use ? ` <span class="tag src" title="Still assigned to a world">in use</span>` : "");
+    return `<div class="row" style="gap:0.5rem; align-items:center; margin:0.15rem 0; ${p.superseded ? "opacity:0.6" : ""}">
+      <span class="tag src" style="margin-left:0; min-width:4.6rem; text-align:center">${p.type === "behavior" ? "BEHAVIOR" : "RESOURCE"}</span>
+      <span class="hint" style="margin:0; min-width:4rem">${ver(p.version)}</span>
+      <span class="hint" style="margin:0; min-width:4.5rem">${p.min_engine ? ver(p.min_engine) + "+" : ""}</span>
+      <span class="hint" style="margin:0; min-width:4.5rem">${fmtBytes(p.size)}</span>${tags}
+      ${missing ? `<span class="tag warn" style="margin-left:0" onclick="copyDep(${i})" title="Click to copy missing pack id: ${esc(p.missing_deps.join(", "))}">missing dependency</span>` : ""}
+      <button class="btn danger icon" style="margin-left:auto" title="Delete this ${p.type} pack from library" onclick="delPackIdx(${i})">${IC.trash}</button>
+    </div>`;
+  };
+  $("packs").innerHTML = rows.length ? `
+    <table class="packs">
+      <thead><tr><th>Mod</th><th>Parts (type · version · MC · size)</th></tr></thead>
+      <tbody>${rows.map(g => {
+        const lead = g.find(r => !r.p.superseded) || g[0];
+        const hasBP = g.some(r => r.p.type === "behavior" && !r.p.superseded), hasRP = g.some(r => r.p.type === "resource" && !r.p.superseded);
+        const anyMissing = g.some(r => (r.p.missing_deps || []).length);
+        const bp = g.find(r => r.p.type === "behavior" && !r.p.superseded);
+        const nTweaks = bp ? ((s.tweaks || {})[bp.p.uuid] || 0) : 0;
+        return `<tr>
+          <td style="vertical-align:top"><strong>${esc(lead.p.name)}</strong>
+            <div class="hint" style="margin:0.2rem 0 0">${hasBP && hasRP ? "BP + RP" : hasBP ? "BP only" : hasRP ? "RP only" : ""}${nTweaks ? ` <span class="tag warn" style="cursor:default">${nTweaks} changed</span>` : ""}</div>
+            ${bp ? `<button class="btn" style="padding:0.2rem 0.6rem; font-size:0.75rem; margin-top:0.3rem" onclick="openModSettings(${bp.i})">${IC.gear}Settings</button>` : ""}
+            ${anyMissing ? `<a href="https://www.google.com/search?q=${encodeURIComponent(lead.p.name.replace(/§./g, "").trim() + " mcaddon download")}" target="_blank" rel="noopener"><button class="btn" style="padding:0.2rem 0.6rem; font-size:0.75rem; margin-top:0.3rem">${IC.search}Find source</button></a>` : ""}</td>
+          <td>${g.map(half).join("")}</td>
+        </tr>`;
+      }).join("")}</tbody>
+    </table>`
+    : `<div class="empty">${all.length ? "No mods match the search/filter." : "No mods uploaded yet."}</div>`;
+}
+
+function renderPlayers(s) {
+  const roles = s.roles || {};
+  const online = new Set((DASH && DASH.players) || []);
+  $("players").innerHTML = s.allowlist.map(n => `
+    <div class="player"><span><strong>${esc(n)}</strong>${online.has(n) ? ' <span class="hint" style="color:var(--accent)">● online</span>' : ''}</span>
+      <span style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap">
+        <select title="Player role" onchange="setRole('${esc(n)}', this.value)">
+          ${[["visitor","Visitor"],["member","Member"],["operator","Admin (Operator)"]].map(([r,label]) => `<option value="${r}" ${(roles[n]||"member")===r?"selected":""}>${label}</option>`).join("")}
+        </select>
+        <select title="Set game mode (player must be online)" onchange="if(this.value){setPlayerMode('${esc(n)}', this.value); this.value='';}">
+          <option value="">Game mode…</option>
+          <option value="survival">Survival</option><option value="creative">Creative</option>
+          <option value="adventure">Adventure</option><option value="spectator">Spectator</option>
+        </select>
+        <button class="btn danger icon" title="Remove player" onclick="removePlayer('${esc(n)}')">${IC.trash}</button>
+      </span>
+    </div>`).join("") || '<div class="empty">No players on the allow list yet.</div>';
+}
+
+// ---------------------------------------------------------------- world ---
+const RULE_GROUPS = [
+  ["Performance", [
+    ["randomtickspeed", "Random tick speed", "int", "1 is vanilla. 2 doubles crop/fire/grass work in every loaded chunk."],
+    ["domobspawning", "Mob spawning", "bool"],
+    ["doinsomnia", "Phantoms spawn (insomnia)", "bool"],
+    ["spawnradius", "Spawn radius (blocks)", "int"],
+  ]],
+  ["World", [
+    ["dodaylightcycle", "Day / night cycle", "bool"],
+    ["doweathercycle", "Weather cycle", "bool"],
+    ["dofiretick", "Fire spreads", "bool"],
+    ["mobgriefing", "Mob griefing (creepers break blocks)", "bool"],
+    ["tntexplodes", "TNT explodes", "bool"],
+    ["tntexplosiondropdecay", "TNT drops decay", "bool"],
+    ["respawnblocksexplode", "Beds/anchors explode in wrong dimension", "bool"],
+    ["projectilescanbreakblocks", "Projectiles break blocks", "bool"],
+  ]],
+  ["Players", [
+    ["keepinventory", "Keep inventory on death", "bool"],
+    ["naturalregeneration", "Natural health regen", "bool"],
+    ["pvp", "PvP damage", "bool"],
+    ["falldamage", "Fall damage", "bool"],
+    ["firedamage", "Fire damage", "bool"],
+    ["drowningdamage", "Drowning damage", "bool"],
+    ["freezedamage", "Freeze damage", "bool"],
+    ["doimmediaterespawn", "Skip death screen (instant respawn)", "bool"],
+    ["playerssleepingpercentage", "% of players needed to sleep", "int"],
+    ["recipesunlock", "Recipes unlock progressively", "bool"],
+    ["dolimitedcrafting", "Only craft unlocked recipes", "bool"],
+  ]],
+  ["Drops", [
+    ["domobloot", "Mobs drop loot", "bool"],
+    ["dotiledrops", "Blocks drop items", "bool"],
+    ["doentitydrops", "Entities drop items", "bool"],
+  ]],
+  ["HUD & chat", [
+    ["showcoordinates", "Show coordinates", "bool"],
+    ["showdaysplayed", "Show days played", "bool"],
+    ["showtags", "Show item tags", "bool"],
+    ["showdeathmessages", "Death messages", "bool"],
+    ["sendcommandfeedback", "Command feedback in chat", "bool"],
+  ]],
+  ["Commands", [
+    ["commandblocksenabled", "Command blocks", "bool"],
+    ["commandblockoutput", "Command block output", "bool"],
+    ["maxcommandchainlength", "Max command chain length", "int"],
+    ["functioncommandlimit", "Function command limit", "int"],
+  ]],
+];
+
+async function loadWorld(manual) {
+  if (manual) { $("worldRules").innerHTML = '<div class="empty">Reading from server…</div>'; }
+  let w;
+  try { w = await apiJson("api/world"); } catch (e) {
+    $("worldNow").innerHTML = '<div class="empty">' + esc(e.message) + '</div>';
+    return;
+  }
+  WORLD = w;
+  renderWorld(w);
+}
+
+function ticksToClock(t) {
+  if (t == null) return "—";
+  const h = Math.floor(((t + 6000) % 24000) / 1000), m = Math.floor((((t + 6000) % 1000) / 1000) * 60);
+  return String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0");
+}
+
+function renderWorld(w) {
+  if (!w.online) {
+    $("worldNow").innerHTML = '<div class="empty">Server is stopped. Start it from the Worlds tab to manage live settings.</div>';
+    $("worldRules").innerHTML = ""; $("worldDefaults").innerHTML = "";
+    return;
+  }
+  const g = w.gamerules || {};
+  $("worldNow").innerHTML = `
+    <div class="row" style="gap:1.2rem; flex-wrap:wrap; align-items:flex-end">
+      <label class="field"><span>Time of day — now ${ticksToClock(w.time)}${w.day != null ? " · day " + w.day : ""}</span>
+        <span class="row">
+          ${["day","noon","sunset","night","midnight","sunrise"].map(t => `<button class="btn" onclick="worldPost('world/time',{value:'${t}'})">${t[0].toUpperCase()+t.slice(1)}</button>`).join("")}
+        </span></label>
+      <label class="field"><span>Weather</span>
+        <span class="row">
+          ${["clear","rain","thunder"].map(t => `<button class="btn" onclick="worldPost('world/weather',{value:'${t}'})">${t[0].toUpperCase()+t.slice(1)}</button>`).join("")}
+        </span></label>
+    </div>`;
+  $("worldRules").innerHTML = RULE_GROUPS.map(([title, rules]) => `
+    <h4 style="margin:0.9rem 0 0.4rem; color:var(--muted); font-size:0.8rem; text-transform:uppercase; letter-spacing:0.05em">${title}</h4>
+    ${rules.map(([k, label, kind, note]) => {
+      const v = g[k];
+      const unknown = v == null;
+      const bad = k === "randomtickspeed" && !unknown && Number(v) > 1;
+      const ctl = kind === "bool"
+        ? `<select ${unknown ? "disabled" : ""} onchange="worldPost('world/gamerule',{key:'${k}',value:this.value})"><option value="true" ${v==="true"?"selected":""}>On</option><option value="false" ${v==="false"?"selected":""}>Off</option></select>`
+        : `<span class="row"><input type="text" value="${esc(v ?? "")}" id="rule_${k}" maxlength="7" style="width:6rem" ${unknown ? "disabled" : ""} onkeydown="if(event.key==='Enter')worldPost('world/gamerule',{key:'${k}',value:this.value})" /><button class="btn" ${unknown ? "disabled" : ""} onclick="worldPost('world/gamerule',{key:'${k}',value:$('rule_${k}').value})">Set</button></span>`;
+      return `<div class="player" style="${bad ? "border-color:#c9a227" : ""}">
+        <span><strong>${label}</strong>${note ? `<div class="hint" style="margin:0.15rem 0 0">${note}</div>` : ""}${bad ? '<div class="hint" style="color:#e6c35c; margin:0.15rem 0 0">Above vanilla — likely costing you performance.</div>' : ""}${unknown ? '<div class="hint" style="margin:0.15rem 0 0">Not reported by this server version.</div>' : ""}</span>
+        ${ctl}
+      </div>`;
+    }).join("")}`).join("");
+  const p = w.props || {};
+  $("worldDefaults").innerHTML = `
+    <div class="player"><span><strong>Difficulty</strong></span>
+      <select onchange="worldPost('world/difficulty',{value:this.value})">
+        ${["peaceful","easy","normal","hard"].map(d => `<option value="${d}" ${(p.difficulty||"easy")===d?"selected":""}>${d[0].toUpperCase()+d.slice(1)}</option>`).join("")}
+      </select></div>
+    <div class="player"><span><strong>Default game mode</strong><div class="hint" style="margin:0.15rem 0 0">For new players. Needs a server restart.</div></span>
+      <select onchange="worldPost('world/gamemode',{value:this.value})">
+        ${["survival","creative","adventure"].map(d => `<option value="${d}" ${(p.gamemode||"survival")===d?"selected":""}>${d[0].toUpperCase()+d.slice(1)}</option>`).join("")}
+      </select></div>
+    <div class="player"><span><strong>Cheats</strong><div class="hint" style="margin:0.15rem 0 0">Game rules above only stick when cheats are on. Change in the Worlds tab (restart).</div></span>
+      <span>${(p.cheats||"false")==="true" ? "On" : "Off"}</span></div>`;
+}
+
+async function worldPost(url, body) {
+  const r = await fetch(url, { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body || {}) });
+  const t = await r.json().catch(() => ({}));
+  if (!r.ok) { showBar(t.error || "request failed", "err"); return; }
+  showBar(t.restart ? "Saved — restart the server to apply" : "Applied", "ok");
+  setTimeout(() => loadWorld(), 600);
+}
+
+function setPlayerMode(n, mode) { worldPost("players/gamemode", { name: n, mode }); }
+
+async function runConsole() {
+  const cmd = $("consoleCmd").value.trim();
+  if (!cmd) return;
+  consoleHistory.push(cmd); consoleIdx = consoleHistory.length;
+  const out = $("consoleOut");
+  out.innerHTML += (out.querySelector(".hint") ? "" : "\n") + `<span style="color:var(--accent)">&gt; ${esc(cmd)}</span>\n`;
+  if (out.querySelector(".hint")) out.querySelector(".hint").remove();
+  $("consoleCmd").value = "";
+  const r = await fetch("world/console", { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({ cmd }) });
+  const t = await r.json().catch(() => ({}));
+  if (!r.ok) { out.innerHTML += `<span style="color:#e66">${esc(t.error || "failed")}</span>\n`; }
+  else { out.innerHTML += (t.lines && t.lines.length ? t.lines.map(esc).join("\n") : '<span class="hint">(no output)</span>') + "\n"; }
+  out.scrollTop = out.scrollHeight;
+}
+
+function consoleHist(dir) {
+  if (!consoleHistory.length) return;
+  consoleIdx = Math.max(0, Math.min(consoleHistory.length, consoleIdx + dir));
+  $("consoleCmd").value = consoleHistory[consoleIdx] || "";
+}
+
+async function loadLogs(manual) {
+  let d;
+  try { d = await apiJson("api/logs?tail=400"); } catch { return; }
+  if (d.error && !d.lines.length) {
+    $("events").innerHTML = '<div class="empty">' + esc(d.error) + "</div>";
+    $("issues").innerHTML = '<div class="empty">' + esc(d.error) + "</div>";
+    $("rawlog").textContent = d.error;
+    return;
+  }
+  $("events").innerHTML = (d.events || []).slice().reverse().map(e => `
+    <div class="evt">
+      <span class="t">${esc(e.time)}</span>
+      <span class="badge ${e.type}">${e.type.toUpperCase()}</span>
+      <span>${esc(e.player)}</span>
+    </div>`).join("") || '<div class="empty">No joins or leaves in the recent log.</div>';
+  $("issues").innerHTML = (d.issues || []).slice().reverse().map(x => `
+    <div class="evt">
+      <span class="t">${esc(x.time)}</span>
+      <span class="badge ${x.level === "ERROR" ? "leave" : "spawn"}">${esc(x.level)}</span>
+      <span style="font-family:monospace; font-size:0.8rem">${esc(x.msg)}</span>
+    </div>`).join("") || '<div class="empty">No warnings or errors in the recent log.</div>';
+  const raw = $("rawlog");
+  const atBottom = raw.scrollTop + raw.clientHeight >= raw.scrollHeight - 30;
+  raw.textContent = (d.lines || []).join("\n") || "(log empty)";
+  if (manual || atBottom) raw.scrollTop = raw.scrollHeight;
+}
+
+async function post(url, body) {
+  const r = await fetch(url, { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body || {}) });
+  const t = await r.json().catch(() => ({}));
+  if (!r.ok) showBar(t.error || "request failed", "err");
+  refresh();
+}
+
+async function activateIdx(i) {
+  const w = LAST.worlds[i];
+  if (await ask("Switch world?", `The server restarts on "${w.name}". Anyone online gets kicked for about a minute. The current world is saved first.`, "Switch world"))
+    post("worlds/activate", { id: w.id });
+}
+async function delIdx(i) {
+  const w = LAST.worlds[i];
+  if (await ask("Delete forever?", `"${w.name}" will be permanently removed from the library. This cannot be undone.`, "Delete forever", true))
+    post("worlds/delete", { id: w.id });
+}
+/* ---------- new-world wizard ---------- */
+const RULES = [
+  ["showcoordinates", "Show coordinates", false],
+  ["keepinventory", "Keep inventory on death", false],
+  ["mobgriefing", "Mob griefing (creepers break blocks)", true],
+  ["dodaylightcycle", "Day / night cycle", true],
+  ["doweathercycle", "Weather cycle", true],
+  ["domobspawning", "Mob spawning", true],
+  ["dofiretick", "Fire spreads", true],
+  ["tntexplodes", "TNT explodes", true],
+  ["naturalregeneration", "Natural health regen", true],
+  ["pvp", "PvP damage", true],
+  ["doinsomnia", "Phantoms spawn (insomnia)", true],
+  ["commandblocksenabled", "Command blocks", true],
+];
+const WIZ_TITLES = ["Name & seed", "Game settings", "Cheats & game rules", "Performance", "Mods", "Review"];
+let WIZ = null, lastPackIdx = null;
+
+function openWizard() {
+  WIZ = { step: 0, name: "", seed: "", gamemode: "survival", difficulty: "normal", level_type: "DEFAULT",
+          cheats: "false", rules: Object.fromEntries(RULES.map(([k,,d]) => [k, d])), randomtickspeed: "1",
+          view: "32", tick: "4", maxp: "10", packs: new Set() };
+  lastPackIdx = null;
+  $("wizDlg").showModal();
+  wizRender();
+}
+function wizSave() {
+  if (!WIZ) return;
+  const g = (id) => $(id) ? $(id).value : null;
+  if ($("wizName")) { WIZ.name = $("wizName").value; WIZ.seed = $("wizSeed").value.replace(/[^0-9-]/g, ""); }
+  if ($("wizGamemode")) { WIZ.gamemode = g("wizGamemode"); WIZ.difficulty = g("wizDifficulty"); WIZ.level_type = g("wizLevelType"); }
+  if ($("wizCheats")) {
+    WIZ.cheats = g("wizCheats");
+    RULES.forEach(([k]) => { const el = document.querySelector(`[data-rule="${k}"]`); if (el) WIZ.rules[k] = el.checked; });
+    WIZ.randomtickspeed = g("wizTickspeed") || "1";
+  }
+  if ($("wizView")) { WIZ.view = g("wizView"); WIZ.tick = g("wizTick"); WIZ.maxp = g("wizMaxp"); }
+  if ($("wizPackList")) {
+    WIZ.packs = new Set([...document.querySelectorAll("#wizPackList input.modhalf:checked")].map(c => c.dataset.uuid));
+  }
+}
+function wizStep(dir) {
+  wizSave();
+  if (dir > 0 && WIZ.step === 0 && !WIZ.name.trim()) { $("wizName").focus(); return; }
+  if (dir > 0 && WIZ.step === WIZ_TITLES.length - 1) { wizCreate(); return; }
+  WIZ.step = Math.max(0, Math.min(WIZ_TITLES.length - 1, WIZ.step + dir));
+  wizRender();
+}
+function shuffleSeed() {
+  wizSave();
+  WIZ.seed = String(Math.floor(Math.random() * 9007199254740991) * (Math.random() < 0.5 ? -1 : 1));
+  wizRender();
+}
+function peekWorld() {
+  wizSave();
+  if (!WIZ.seed) { shuffleSeed(); }
+  window.open("https://www.chunkbase.com/apps/seed-map#seed=" + encodeURIComponent(WIZ.seed) + ";platform=bedrock_1_21;dimension=overworld;x=0;z=0;zoom=0.5", "_blank", "noopener");
+}
+function ruleRows() {
+  return RULES.map(([k, label, def]) => `
+    <label class="rule"><input type="checkbox" data-rule="${k}" ${WIZ.rules[k] ? "checked" : ""} />
+      <span style="flex:1">${label}</span>${WIZ.rules[k] !== def ? '<span class="tag warn" style="cursor:default">changed</span>' : ""}</label>`).join("");
+}
+function changedRules() {
+  return RULES.filter(([k,,d]) => WIZ.rules[k] !== d).map(([k, label]) => `${label.toLowerCase()}: ${WIZ.rules[k] ? "on" : "off"}`)
+    .concat(WIZ.randomtickspeed !== "1" ? [`random tick speed: ${WIZ.randomtickspeed}`] : []);
+}
+function wizRender() {
+  $("wizStepTitle").textContent = WIZ_TITLES[WIZ.step];
+  $("wizSteps").innerHTML = WIZ_TITLES.map((_, i) => `<span class="st ${i <= WIZ.step ? "done" : ""}"></span>`).join("");
+  $("wizBackBtn").style.visibility = WIZ.step === 0 ? "hidden" : "visible";
+  $("wizNextBtn").textContent = WIZ.step === WIZ_TITLES.length - 1 ? "Create & switch" : "Next";
+  const B = $("wizBody");
+  if (WIZ.step === 0) {
+    B.innerHTML = `
+      <div class="grid2">
+        <label class="field"><span>World name</span><input type="text" id="wizName" maxlength="48" value="${esc(WIZ.name)}" placeholder="My New World" /></label>
+        <label class="field"><span>Seed (blank = random)</span><input type="text" id="wizSeed" maxlength="20" value="${esc(WIZ.seed)}" placeholder="e.g. 1234567890" /></label>
+      </div>
+      <div class="row" style="margin-top:0.9rem">
+        <button class="btn" onclick="shuffleSeed()">${IC.check ? "" : ""}Shuffle seed</button>
+        <button class="btn" onclick="peekWorld()">${IC.search}Peek at world</button>
+      </div>
+      <p class="hint" style="margin-top:0.7rem">Peek opens an interactive Bedrock seed map (Chunkbase) centered on spawn, so you can scout biomes, villages and structures for this exact seed. If the seed box is blank it shuffles one first.</p>`;
+  } else if (WIZ.step === 1) {
+    B.innerHTML = `
+      <div class="grid2">
+        <label class="field"><span>Game mode</span><select id="wizGamemode">
+          ${["survival","creative","adventure"].map(v => `<option value="${v}" ${WIZ.gamemode === v ? "selected" : ""}>${v[0].toUpperCase()+v.slice(1)}</option>`).join("")}</select></label>
+        <label class="field"><span>Difficulty</span><select id="wizDifficulty">
+          ${["peaceful","easy","normal","hard"].map(v => `<option value="${v}" ${WIZ.difficulty === v ? "selected" : ""}>${v[0].toUpperCase()+v.slice(1)}</option>`).join("")}</select></label>
+        <label class="field"><span>World type</span><select id="wizLevelType">
+          ${[["DEFAULT","Default"],["FLAT","Flat"],["LEGACY","Legacy"]].map(([v,l]) => `<option value="${v}" ${WIZ.level_type === v ? "selected" : ""}>${l}</option>`).join("")}</select></label>
+      </div>`;
+  } else if (WIZ.step === 2) {
+    B.innerHTML = `
+      <label class="field" style="max-width:12rem"><span>Cheats</span><select id="wizCheats">
+        <option value="false" ${WIZ.cheats === "false" ? "selected" : ""}>Off</option>
+        <option value="true" ${WIZ.cheats === "true" ? "selected" : ""}>On</option></select></label>
+      <p class="hint" style="margin-top:0.7rem">Game rules, with the vanilla defaults shown. Changing any rule turns cheats on, which is how Bedrock works.</p>
+      <div class="grid2">${ruleRows()}</div>
+      <label class="field" style="max-width:12rem; margin-top:0.8rem"><span>Random tick speed (default 1)</span><input type="text" id="wizTickspeed" maxlength="4" value="${esc(WIZ.randomtickspeed)}" /></label>`;
+  } else if (WIZ.step === 3) {
+    B.innerHTML = `
+      <div class="grid2">
+        <label class="field"><span>Render distance (5-64)</span><input type="text" id="wizView" maxlength="2" value="${esc(WIZ.view)}" /></label>
+        <label class="field"><span>Tick distance (4-12)</span><input type="text" id="wizTick" maxlength="2" value="${esc(WIZ.tick)}" /></label>
+        <label class="field"><span>Max players (1-50)</span><input type="text" id="wizMaxp" maxlength="2" value="${esc(WIZ.maxp)}" /></label>
+      </div>
+      <p class="hint" style="margin-top:0.7rem">Tick distance is the expensive one since it drives mob, crop and redstone simulation, so keep it low. Render distance only sends more terrain.</p>`;
+  } else if (WIZ.step === 4) {
+    const packs = (LAST && LAST.packs) || [];
+    B.innerHTML = `
+      <p class="hint">Mods get baked in before the world generates, so world-gen mods work from the very first chunk. Ticking a mod adds both its BP and RP halves.</p>
+      <div id="wizPackList" style="max-height:16rem; overflow-y:auto">${renderModPicker(packs, "wiz", p => WIZ.packs.has(p.uuid))}</div>`;
+  } else {
+    const packs = ((LAST && LAST.packs) || []).filter(p => WIZ.packs.has(p.uuid));
+    const rules = changedRules();
+    const cheats = WIZ.cheats === "true" || rules.length > 0;
+    const cap = (s) => s[0].toUpperCase() + s.slice(1).toLowerCase();
+    const row = (k, v) => `<div style="display:flex; justify-content:space-between; align-items:baseline; gap:1rem; padding:0.32rem 0">
+      <span class="hint" style="margin:0; flex:none">${k}</span><span style="text-align:right">${v}</span></div>`;
+    const section = (title, step, body) => `
+      <div style="border:1px solid var(--border); border-radius:12px; padding:0.75rem 1rem 0.55rem; margin-bottom:0.7rem; background:rgba(0,0,0,0.15)">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem">
+          <span style="font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:0.07em; color:var(--muted)">${title}</span>
+          <button class="btn" style="padding:0.14rem 0.6rem; font-size:0.72rem" onclick="wizGoto(${step})">Edit</button>
+        </div>${body}</div>`;
+    B.innerHTML =
+      section("World", 0,
+        row("Name", `<strong>${esc(WIZ.name)}</strong>`) +
+        row("Seed", WIZ.seed
+          ? `<span style="font-family:monospace">${esc(WIZ.seed)}</span> <button class="btn" style="padding:0.1rem 0.5rem; font-size:0.7rem" onclick="peekWorld()">Peek</button>`
+          : '<span class="hint" style="margin:0">Random</span>')) +
+      section("Game", 1,
+        row("Mode", cap(WIZ.gamemode)) + row("Difficulty", cap(WIZ.difficulty)) + row("World type", cap(WIZ.level_type))) +
+      section("Cheats & game rules", 2,
+        row("Cheats", cheats ? (WIZ.cheats === "true" ? "On" : 'On <span class="hint" style="margin:0">(turned on because rules changed)</span>') : "Off") +
+        (rules.length
+          ? `<div class="row" style="padding:0.3rem 0; gap:0.35rem">${rules.map(r => `<span class="tag warn" style="margin-left:0; cursor:default">${esc(r)}</span>`).join("")}</div>`
+          : row("Rules", '<span class="hint" style="margin:0">All vanilla defaults</span>'))) +
+      section("Performance", 3,
+        row("Render distance", esc(WIZ.view) + " chunks") + row("Tick distance", esc(WIZ.tick)) + row("Max players", esc(WIZ.maxp))) +
+      section(`Mods (${packs.length})`, 4,
+        packs.length
+          ? `<div class="row" style="padding:0.3rem 0; gap:0.35rem">${packs.map(p => `<span class="tag src" style="margin-left:0">${esc(p.name)} · ${p.type === "behavior" ? "BP" : "RP"}</span>`).join("")}</div>`
+          : row("Packs", '<span class="hint" style="margin:0">None, plain vanilla world</span>')) +
+      `<p class="hint" style="margin:0.2rem 0 0">Your current world gets saved to the library, then the server restarts and generates this one. Takes about a minute.</p>`;
+  }
+}
+function wizGoto(step) {
+  WIZ.step = step;
+  wizRender();
+}
+function packRangeClick(e, box) {
+  const idx = Number(box.dataset.idx);
+  if (e.shiftKey && lastPackIdx !== null) {
+    const [a, b] = [Math.min(lastPackIdx, idx), Math.max(lastPackIdx, idx)];
+    document.querySelectorAll("#wizPackList input").forEach(c => {
+      const i = Number(c.dataset.idx);
+      if (i >= a && i <= b) c.checked = box.checked;
+    });
+  }
+  lastPackIdx = idx;
+}
+async function wizCreate() {
+  wizSave();
+  const settings = { gamemode: WIZ.gamemode, difficulty: WIZ.difficulty, level_type: WIZ.level_type, cheats: WIZ.cheats,
+                     view_distance: WIZ.view.trim(), tick_distance: WIZ.tick.trim(), max_players: WIZ.maxp.trim() };
+  const gamerules = {};
+  RULES.forEach(([k,,d]) => { if (WIZ.rules[k] !== d) gamerules[k] = String(WIZ.rules[k]); });
+  if (WIZ.randomtickspeed.trim() && WIZ.randomtickspeed.trim() !== "1") gamerules.randomtickspeed = WIZ.randomtickspeed.trim();
+  $("wizDlg").close();
+  post("worlds/new-seed", { name: WIZ.name.trim(), seed: WIZ.seed.trim(), settings, gamerules, packs: [...WIZ.packs] });
+}
+function addPlayer() { const n = $("player").value.trim(); if (n) { post("allowlist/add", { name: n }); $("player").value = ""; } }
+function setRole(n, role) { post("players/role", { name: n, role }); }
+async function removePlayer(n) {
+  if (await ask("Remove player?", `${n} will no longer be able to join the server.`, "Remove", true)) post("allowlist/remove", { name: n });
+}
+function copyDep(i) {
+  const uuids = (LAST.packs[i].missing_deps || []).join(", ");
+  navigator.clipboard.writeText(uuids);
+  showBar("Missing pack id copied: " + uuids + ". This is usually the matching BP or RP half of the same mod. Use Find source to grab the full bundle again.", "ok");
+}
+
+async function restartServer() {
+  if (await ask("Restart server?", "Everyone online is disconnected for about a minute. Needed to apply edited pack files on the active world.", "Restart"))
+    post("server/restart", {});
+}
+
+/* ---------- upload: file, folder (zipped in-browser), drag & drop ---------- */
+function pickFile() { $("fileInput").click(); }
+function pickFolder() { $("folderInput").click(); }
+$("fileInput").onchange = () => { const f = $("fileInput").files[0]; if (f) uploadBlob(f, f.name.replace(/\.(mcworld|zip)$/i, "")); $("fileInput").value = ""; };
+$("folderInput").onchange = async () => {
+  const files = [...$("folderInput").files]; $("folderInput").value = "";
+  if (files.length) await uploadFolder(files);
+};
+const drop = $("drop");
+["dragenter","dragover"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("hot"); }));
+["dragleave","drop"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove("hot"); }));
+drop.addEventListener("drop", async (e) => {
+  const items = [...(e.dataTransfer.items || [])];
+  const dirItem = items.find(i => i.webkitGetAsEntry && i.webkitGetAsEntry()?.isDirectory);
+  if (dirItem) {
+    const files = await readDirEntry(dirItem.webkitGetAsEntry());
+    if (files.length) await uploadFolder(files, dirItem.webkitGetAsEntry().name);
+    return;
+  }
+  const f = e.dataTransfer.files[0];
+  if (f) uploadBlob(f, f.name.replace(/\.(mcworld|zip)$/i, ""));
+});
+function readDirEntry(entry, prefix = "") {
+  return new Promise((resolve) => {
+    const out = [];
+    const walk = (ent, path, done) => {
+      if (ent.isFile) { ent.file(f => { f._rel = path + ent.name; out.push(f); done(); }); return; }
+      const reader = ent.createReader();
+      const readAll = (acc) => reader.readEntries(es => {
+        if (!es.length) {
+          let i = 0; const next = () => (i < acc.length) ? walk(acc[i++], path + ent.name + "/", next) : done();
+          next();
+        } else readAll(acc.concat([...es]));
+      });
+      readAll([]);
+    };
+    walk(entry, prefix, () => resolve(out));
+  });
+}
+function upMsg(text, isErr) { const m = $("upmsg"); m.textContent = text; m.style.color = isErr ? "#fca5a5" : "#4ade80"; }
+
+async function uploadFolder(files, dirName) {
+  const rels = files.map(f => f._rel || f.webkitRelativePath || f.name);
+  if (!rels.some(r => r.endsWith("level.dat"))) { upMsg("That folder doesn't look like a Bedrock world (no level.dat inside).", true); return; }
+  let name = dirName || (files[0].webkitRelativePath || "").split("/")[0] || "world";
+  const nameFile = files.find((f, i) => rels[i].endsWith("levelname.txt"));
+  if (nameFile) { try { name = (await nameFile.text()).trim() || name; } catch {} }
+  upMsg("Packaging " + files.length + " files…", false);
+  const blob = await buildZip(files, rels);
+  uploadBlob(blob, name);
+}
+
+/* store-only zip built client-side so world folders upload without manual zipping */
+const CRC_TABLE = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = (c & 1) ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(buf, crc = 0xFFFFFFFF) { for (let i = 0; i < buf.length; i++) crc = CRC_TABLE[(crc ^ buf[i]) & 0xFF] ^ (crc >>> 8); return crc; }
+async function buildZip(files, rels) {
+  const enc = new TextEncoder(), parts = [], central = [];
+  let offset = 0;
+  for (let i = 0; i < files.length; i++) {
+    const data = new Uint8Array(await files[i].arrayBuffer());
+    const nameB = enc.encode(rels[i]);
+    const crc = (crc32(data) ^ 0xFFFFFFFF) >>> 0;
+    const lh = new DataView(new ArrayBuffer(30));
+    lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true);
+    lh.setUint16(8, 0, true); lh.setUint32(14, crc, true);
+    lh.setUint32(18, data.length, true); lh.setUint32(22, data.length, true);
+    lh.setUint16(26, nameB.length, true);
+    parts.push(new Uint8Array(lh.buffer), nameB, data);
+    const ch = new DataView(new ArrayBuffer(46));
+    ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true);
+    ch.setUint32(16, crc, true); ch.setUint32(20, data.length, true); ch.setUint32(24, data.length, true);
+    ch.setUint16(28, nameB.length, true); ch.setUint32(42, offset, true);
+    central.push(new Uint8Array(ch.buffer), nameB);
+    offset += 30 + nameB.length + data.length;
+  }
+  const cdSize = central.reduce((a, p) => a + p.length, 0);
+  const end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true); end.setUint16(8, files.length, true); end.setUint16(10, files.length, true);
+  end.setUint32(12, cdSize, true); end.setUint32(16, offset, true);
+  return new Blob([...parts, ...central, new Uint8Array(end.buffer)], { type: "application/zip" });
+}
+
+function uploadBlob(blob, name) {
+  const prog = $("upprog"); prog.style.display = "block"; prog.value = 0;
+  upMsg("Uploading " + (name || "world") + " (" + fmtBytes(blob.size) + ")…", false);
+  const xhr = new XMLHttpRequest();
+  xhr.open("PUT", "worlds/upload?name=" + encodeURIComponent(name || "world"));
+  xhr.upload.onprogress = (e) => { if (e.lengthComputable) prog.value = (e.loaded / e.total) * 100; };
+  xhr.onload = () => {
+    prog.style.display = "none"; prog.value = 0;
+    let resp = {}; try { resp = JSON.parse(xhr.responseText); } catch {}
+    if (xhr.status === 200) upMsg('"' + (name || "world") + '" is in the library. Press Play this world when you are ready.', false);
+    else upMsg(resp.error || "upload failed", true);
+    refresh();
+  };
+  xhr.onerror = () => { prog.style.display = "none"; upMsg("upload failed (connection)", true); };
+  xhr.send(blob);
+}
+
+/* ---------- mod library: batch upload queue + per-world assignment ---------- */
+let packWorld = null, packQuery = "", packFilter = "all";
+const UPQ = [];
+async function delPackIdx(i) {
+  const p = LAST.packs[i];
+  if (await ask("Remove mod from library?", `"${p.name}" (v${ver(p.version)}, ${fmtBytes(p.size)}) will be deleted from the library. Worlds that already embed it keep their copy until you unassign it there. This cannot be undone.`, "Delete from library", true))
+    post("packs/delete", { uuid: p.uuid });
+}
+
+async function cleanupDupes() {
+  const dupes = (LAST.packs || []).filter(p => p.superseded && !p.in_use);
+  if (!dupes.length) return;
+  const list = dupes.slice(0, 8).map(p => `• ${p.name} v${ver(p.version)}`).join("\n") + (dupes.length > 8 ? `\n…and ${dupes.length - 8} more` : "");
+  if (!await ask(`Remove ${dupes.length} old version${dupes.length === 1 ? "" : "s"}?`, `Only copies that no world uses will be deleted. The newest version of each mod stays.\n\n${list}`, "Remove old versions", true)) return;
+  const r = await fetch("packs/cleanup-duplicates", { method: "POST", headers: {"Content-Type": "application/json"}, body: "{}" });
+  const t = await r.json().catch(() => ({}));
+  if (!r.ok) { showBar(t.error || "cleanup failed", "err"); return; }
+  showBar(`Removed ${t.removed.length} old version${t.removed.length === 1 ? "" : "s"}` + (t.kept_in_use.length ? ` · kept ${t.kept_in_use.length} still assigned to a world` : ""), "ok");
+  refresh();
+}
+function renderQueue() {
+  $("upqueue").innerHTML = UPQ.map(q => `
+    <div class="player" style="flex-wrap:wrap">
+      <span><strong>${esc(q.file)}</strong>
+        ${q.state === "uploading" ? `<span class="hint" style="display:inline"><span class="spin"></span>uploading ${q.pct}%</span>` : ""}
+        ${q.state === "queued" ? '<span class="hint" style="display:inline">queued…</span>' : ""}
+        ${q.state === "error" ? `<span class="tag err">FAILED</span> <span class="hint" style="display:inline">${esc(q.error)}</span>` : ""}
+      </span>
+      ${q.results ? `<div style="width:100%; margin-top:0.3rem">${q.results.map(r => `
+        <div class="hint" style="margin:0.15rem 0">
+          ${IC.check} ${esc(r.name)}
+          <span class="tag src">${r.status.toUpperCase()}</span>
+          ${(r.missing_deps || []).length ? `<span class="tag warn">missing dependency</span> <span class="hint" style="display:inline">needs pack ${r.missing_deps.map(u => esc(u)).join(", ")}, usually the other half (BP or RP) of the same mod. Download the full .mcaddon bundle</span>` : ""}
+        </div>`).join("")}</div>` : ""}
+    </div>`).join("");
+}
+$("packInput").onchange = () => {
+  const files = [...$("packInput").files]; $("packInput").value = "";
+  for (const f of files) UPQ.push({ file: f.name, blob: f, state: "queued", pct: 0, results: null, error: "" });
+  renderQueue();
+  pumpQueue();
+};
+let pumping = false;
+async function pumpQueue() {
+  if (pumping) return;
+  pumping = true;
+  for (const q of UPQ) {
+    if (q.state !== "queued") continue;
+    q.state = "uploading"; renderQueue();
+    await new Promise((done) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("PUT", "packs/upload");
+      xhr.upload.onprogress = (e) => { if (e.lengthComputable) { q.pct = Math.round((e.loaded / e.total) * 100); renderQueue(); } };
+      xhr.onload = () => {
+        let resp = {}; try { resp = JSON.parse(xhr.responseText); } catch {}
+        if (xhr.status === 200) { q.state = "done"; q.results = resp.imported || []; }
+        else { q.state = "error"; q.error = resp.error || "upload failed"; }
+        renderQueue(); done();
+      };
+      xhr.onerror = () => { q.state = "error"; q.error = "connection failed"; renderQueue(); done(); };
+      xhr.send(q.blob);
+    });
+    q.blob = null;
+  }
+  pumping = false;
+  refresh();
+}
+async function openPacksIdx(i) {
+  const w = LAST.worlds[i];
+  packWorld = { id: w.id, name: w.name, isActive: w.active };
+  $("packDlgWorld").textContent = w.name;
+  $("packDlgHint").textContent = w.active
+    ? "This is the active world, so applying changes restarts the server. Takes about a minute."
+    : "Changes apply instantly; they take effect next time this world is played.";
+  $("packDlgList").innerHTML = '<div class="empty">Loading…</div>';
+  $("packDlg").showModal();
+  let d;
+  try { d = await apiJson("worlds/packs?id=" + encodeURIComponent(w.id)); } catch { d = { packs: [] }; }
+  const packs = d.packs || [];
+  $("packDlgList").innerHTML = renderModPicker(packs, "dlg", p => p.assigned);
+}
+function groupByMod(packs) {
+  const g = new Map();
+  packs.forEach((p, i) => { const k = p.mod || p.name.toLowerCase(); if (!g.has(k)) g.set(k, []); g.get(k).push({ p, i }); });
+  return [...g.values()];
+}
+// One row per mod with a master checkbox; halves (BP/RP, old versions) listed under it.
+function renderModPicker(packs, scope, isChecked) {
+  const groups = groupByMod(packs);
+  if (!groups.length) return '<div class="empty">No mods in the library yet. Upload one in the Mods tab.</div>';
+  return groups.map((g, gi) => {
+    const lead = g.find(r => !r.p.superseded) || g[0];
+    const parts = g.filter(r => !r.p.superseded || isChecked(r.p));  // hide old versions unless already assigned
+    const allOn = parts.every(r => isChecked(r.p)), anyOn = parts.some(r => isChecked(r.p));
+    const anyMissing = parts.some(r => !r.p.available);
+    return `<div data-group="${scope}-${gi}" style="border-bottom:1px solid var(--border); padding:0.35rem 0.2rem">
+      <label style="display:flex; align-items:center; gap:0.6rem; cursor:pointer; padding:0.15rem 0">
+        <input type="checkbox" class="modmaster" ${allOn ? "checked" : ""} onclick="toggleModGroup(this)" />
+        <span style="flex:1"><strong>${esc(lead.p.name)}</strong>
+          <span class="hint" style="margin:0 0 0 0.4rem">${parts.map(r => r.p.type === "behavior" ? "BP" : "RP").join(" + ")}</span>
+          ${anyMissing ? '<span class="tag err">MISSING, uncheck to clean up</span>' : ""}
+          ${parts.some(r => (r.p.missing_deps || []).length) ? '<span class="tag warn">missing dependency</span>' : ""}
+        </span>
+      </label>
+      ${parts.length > 1 || parts[0].p.superseded ? `<div style="padding-left:1.7rem">${parts.map(r => `
+        <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; padding:0.1rem 0; ${r.p.superseded ? "opacity:0.65" : ""}">
+          <input type="checkbox" class="modhalf" data-uuid="${esc(r.p.uuid)}" data-idx="${r.i}" ${isChecked(r.p) ? "checked" : ""} onclick="syncModMaster(this)" />
+          <span class="tag src" style="margin-left:0">${r.p.type === "behavior" ? "BP" : "RP"}</span>
+          <span class="hint" style="margin:0">${ver(r.p.version)}${r.p.superseded ? " · old version" : ""}${r.p.available ? "" : " · missing"}</span>
+        </label>`).join("")}</div>`
+      : `<input type="checkbox" class="modhalf" data-uuid="${esc(parts[0].p.uuid)}" data-idx="${parts[0].i}" ${isChecked(parts[0].p) ? "checked" : ""} style="display:none" />`}
+    </div>`;
+  }).join("");
+}
+function toggleModGroup(master) {
+  const box = master.closest("[data-group]");
+  box.querySelectorAll("input.modhalf").forEach(c => { c.checked = master.checked; });
+}
+function syncModMaster(half) {
+  const box = half.closest("[data-group]");
+  const halves = [...box.querySelectorAll("input.modhalf")];
+  box.querySelector("input.modmaster").checked = halves.every(c => c.checked);
+}
+async function applyPacks() {
+  const keep = [...$("packDlgList").querySelectorAll("input.modhalf:checked")].map(c => c.dataset.uuid);
+  $("packDlg").close();
+  if (packWorld.isActive && !(await ask("Restart server?", "Applying mod changes to the active world restarts the server now.", "Apply & restart"))) return;
+  post("worlds/set-packs", { id: packWorld.id, keep });
+}
+
+/* ---------- mod settings (simple forms over pack JSON) ---------- */
+let modPack = null, modCat = "", modEntries = [], modPending = {}, modQuery = "", modLimit = 60;
+const fieldId = (fi, k) => fi + "|" + k;
+async function openModSettings(i) {
+  const p = LAST.packs[i];
+  modPack = p; modCat = ""; modEntries = []; modPending = {}; modQuery = ""; modLimit = 60;
+  $("modDlgName").textContent = p.name.replace(/§./g, "");
+  $("modSearch").value = ""; $("modOnlyChg").checked = false; $("modMsg").textContent = ""; modDirty();
+  $("modCats").innerHTML = ""; $("modList").innerHTML = '<div class="empty">Reading mod files…</div>';
+  $("modDlg").showModal();
+  let d;
+  try { d = await apiJson("mods/settings?uuid=" + encodeURIComponent(p.uuid)); } catch (e) { $("modList").innerHTML = `<div class="empty">${esc(e.message)}</div>`; return; }
+  const cats = Object.entries(d.categories || {});
+  if (!cats.length) { $("modList").innerHTML = '<div class="empty">This mod has no simple settings to change. Its options are either in-game menus or inside its scripts.</div>'; $("modResetBtn").style.display = "none"; return; }
+  $("modResetBtn").style.display = "";
+  $("modCats").innerHTML = cats.map(([k, c]) => `<button data-cat="${k}" onclick="modTab('${k}')">${esc(c.label)} <span style="opacity:0.7">${c.count}</span>${c.changed ? ` <span style="color:#eec36a">• ${c.changed}</span>` : ""}</button>`).join("");
+  modTab(cats[0][0]);
+}
+async function modTab(cat) {
+  if (Object.keys(modPending).length && !(await ask("Discard changes?", "You have unsaved changes on this tab.", "Discard", true))) return;
+  modCat = cat; modPending = {}; modLimit = 60; modDirty();
+  document.querySelectorAll("#modCats button").forEach(b => b.classList.toggle("on", b.dataset.cat === cat));
+  $("modList").innerHTML = '<div class="empty">Loading…</div>';
+  try { modEntries = (await apiJson(`mods/settings?uuid=${encodeURIComponent(modPack.uuid)}&cat=${cat}`)).entries || []; }
+  catch (e) { $("modList").innerHTML = `<div class="empty">${esc(e.message)}</div>`; return; }
+  renderModEntries();
+}
+function renderModEntries() {
+  const onlyChg = $("modOnlyChg").checked;
+  const hits = modEntries.map((e, i) => ({ e, i })).filter(({ e }) =>
+    (!onlyChg || e.changed) &&
+    (!modQuery || e.title.toLowerCase().includes(modQuery) || String(e.sub).toLowerCase().includes(modQuery) || e.fields.some(f => f.label.toLowerCase().includes(modQuery))));
+  $("modCount").textContent = `${hits.length} of ${modEntries.length}`;
+  const shown = hits.slice(0, modLimit);
+  $("modList").innerHTML = shown.map(({ e, i }) => `
+    <div class="msent ${e.changed ? "chg" : ""}">
+      <div class="ttl">${esc(e.title)}</div>
+      <div class="sub">${esc(e.sub)}</div>
+      <div class="mf">${e.fields.map((f, fi) => {
+        const id = fieldId(i, fi), pend = modPending[id];
+        if (f.kind === "toggle") {
+          const on = pend ? pend.value : f.val;
+          return `<label style="justify-content:flex-start"><input type="checkbox" ${on ? "checked" : ""} onchange="modEdit(${i},${fi},this.checked)" /> ${esc(f.label)}${f.changed ? ' <span class="was">(was on)</span>' : ""}</label>`;
+        }
+        const v = pend ? pend.value : f.val;
+        return `<label><span>${esc(f.label)}${f.changed || pend ? ` <span class="was" title="Put back the mod's original value" onclick="event.preventDefault(); modRevert(${i},${fi})">was ${esc(String(f.orig))}</span>` : ""}</span>
+          <input type="number" step="any" min="${f.min}" value="${esc(String(v ?? ""))}" class="${pend ? "dirty" : f.changed ? "chg" : ""}" onchange="modEdit(${i},${fi},this.value)" /></label>`;
+      }).join("")}</div>
+    </div>`).join("") + (hits.length > modLimit ? `<button class="btn" style="width:100%" onclick="modLimit+=100; renderModEntries()">Show more (${hits.length - modLimit} left)</button>` : "")
+    || `<div class="empty">${modEntries.length ? "Nothing matches." : "Nothing to change here."}</div>`;
+}
+function modEdit(i, fi, raw) {
+  const e = modEntries[i], f = e.fields[fi], id = fieldId(i, fi);
+  let value = raw;
+  if (f.kind !== "toggle") {
+    if (raw === "" ) { value = null; }
+    else { value = Number(raw); if (!isFinite(value)) { $("modMsg").textContent = "Enter a number."; return; } }
+  }
+  const current = f.kind === "toggle" ? f.val : f.val;
+  if (value === current || (value === null && !f.changed)) delete modPending[id];
+  else modPending[id] = { file: e.file, key: f.key, value };
+  modDirty(); renderModEntries();
+}
+function modRevert(i, fi) {
+  const e = modEntries[i], f = e.fields[fi], id = fieldId(i, fi);
+  if (f.changed) modPending[id] = { file: e.file, key: f.key, value: null };
+  else delete modPending[id];
+  modDirty(); renderModEntries();
+}
+function modDirty() {
+  const n = Object.keys(modPending).length;
+  $("modSaveBtn").disabled = !n;
+  $("modSaveBtn").textContent = n ? `Save ${n} change${n === 1 ? "" : "s"}` : "Save";
+}
+async function modPost(url, body) {
+  const r = await fetch(url, { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body) });
+  const t = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(t.error || ("HTTP " + r.status));
+  return t;
+}
+async function modAfterSave(t) {
+  modPending = {}; modDirty();
+  $("modMsg").style.color = "#4ade80";
+  $("modMsg").innerHTML = "Saved." + (t.active ? ' <a href="#" onclick="event.preventDefault(); restartServer()">Restart the server</a> to apply it.' : " It applies next time a world with this mod is played.");
+  const keep = modCat; modCat = ""; await openModSettingsKeep(keep); refresh();
+}
+async function openModSettingsKeep(cat) {
+  let d;
+  try { d = await apiJson("mods/settings?uuid=" + encodeURIComponent(modPack.uuid)); } catch { return; }
+  const cats = Object.entries(d.categories || {});
+  $("modCats").innerHTML = cats.map(([k, c]) => `<button data-cat="${k}" onclick="modTab('${k}')">${esc(c.label)} <span style="opacity:0.7">${c.count}</span>${c.changed ? ` <span style="color:#eec36a">• ${c.changed}</span>` : ""}</button>`).join("");
+  await modTab(cat);
+}
+async function modSave() {
+  const changes = Object.values(modPending);
+  if (!changes.length) return;
+  $("modSaveBtn").disabled = true;
+  try { await modAfterSave(await modPost("mods/settings/save", { uuid: modPack.uuid, changes })); }
+  catch (e) { $("modMsg").style.color = "#fca5a5"; $("modMsg").textContent = "Save failed: " + e.message; modDirty(); }
+}
+async function modReset() {
+  const label = document.querySelector("#modCats button.on")?.textContent.split(" ")[0] || "this tab";
+  if (!(await ask("Reset " + label + "?", "Put every " + label.toLowerCase() + " setting for this mod back to the mod's original values.", "Reset", true))) return;
+  try { await modAfterSave(await modPost("mods/settings/reset", { uuid: modPack.uuid, cat: modCat })); }
+  catch (e) { $("modMsg").style.color = "#fca5a5"; $("modMsg").textContent = "Reset failed: " + e.message; }
+}
+async function modClose() {
+  if (Object.keys(modPending).length && !(await ask("Discard changes?", "You have unsaved changes.", "Discard", true))) return;
+  modPending = {}; $("modDlg").close();
+}
+
+/* ---------- per-world pack file editor ---------- */
+let fileWorld = null, fileCur = "", fileOpen = null;
+function openFilesIdx(i) {
+  const w = LAST.worlds[i];
+  fileWorld = w; fileCur = ""; fileOpen = null;
+  $("fileDlgWorld").textContent = w.name;
+  $("fileEditWrap").style.display = "none";
+  $("fileDlg").showModal();
+  loadDir("");
+}
+async function loadDir(path) {
+  fileCur = path; fileOpen = null;
+  $("fileEditWrap").style.display = "none";
+  $("filePath").textContent = "/" + path;
+  $("fileList").innerHTML = '<div class="empty">Loading…</div>';
+  let d;
+  try { d = await apiJson(`worlds/files?id=${encodeURIComponent(fileWorld.id)}&path=${encodeURIComponent(path)}`); } catch (e) { d = { error: e.message }; }
+  if (d.error) { $("fileList").innerHTML = `<div class="empty">${esc(d.error)}</div>`; return; }
+  window._fileEntries = d.entries || [];
+  $("fileList").innerHTML = window._fileEntries.map((e, i) => `
+    <div class="evt" style="cursor:${e.dir || e.editable ? "pointer" : "default"}" onclick="fileClick(${i})">
+      <span>${e.dir ? IC.folder : IC.file}</span>
+      <span style="flex:1">${esc(e.name)}</span>
+      <span class="t">${e.dir ? "" : fmtBytes(e.size)}${!e.dir && !e.editable ? " · view-only" : ""}</span>
+    </div>`).join("") || '<div class="empty">No embedded packs in this world yet. Assign a mod first.</div>';
+}
+function fileUp() {
+  if (!fileCur) return;
+  const parts = fileCur.split("/"); parts.pop();
+  loadDir(parts.join("/"));
+}
+async function fileClick(i) {
+  const e = window._fileEntries[i];
+  const next = fileCur ? fileCur + "/" + e.name : e.name;
+  if (e.dir) { loadDir(next); return; }
+  if (!e.editable) return;
+  let d;
+  try { d = await apiJson(`worlds/files?id=${encodeURIComponent(fileWorld.id)}&path=${encodeURIComponent(next)}`); } catch { return; }
+  if (d.error) { $("fileMsg").textContent = d.error; return; }
+  fileOpen = next;
+  $("fileEdit").value = d.content;
+  $("fileMsg").textContent = next;
+  $("fileEditWrap").style.display = "block";
+}
+async function saveFile() {
+  if (!fileOpen) return;
+  const r = await fetch("worlds/files/save", { method: "POST", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ id: fileWorld.id, path: fileOpen, content: $("fileEdit").value }) });
+  const t = await r.json().catch(() => ({}));
+  if (!r.ok) { $("fileMsg").textContent = "Save failed: " + (t.error || "unknown"); $("fileMsg").style.color = "#fca5a5"; return; }
+  $("fileMsg").style.color = "#4ade80";
+  $("fileMsg").textContent = "Saved." + (t.active ? " Restart the server (top right) to apply it." : "");
+}
+
+async function loadDash() {
+  let d;
+  try { d = await apiJson("api/dashboard"); } catch { return; }
+  DASH = d;
+  const online = d.server.pods > 0 && d.server.ready >= d.server.pods;
+  const tile = (k, v, s) => `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div>${s ? `<div class="s">${s}</div>` : ""}</div>`;
+  $("dash").innerHTML =
+    tile("Players online",
+      d.player_count != null ? `${d.player_count}${d.max_players ? " / " + d.max_players : ""}` : "n/a",
+      d.players.length ? esc(d.players.join(", ")) : (online ? "nobody on right now" : "server stopped")) +
+    tile("Server", online ? "Online" : (d.server.pods > 0 ? "Starting" : "Stopped"),
+      [d.version ? "v" + esc(d.version) : "", d.uptime ? "up " + esc(d.uptime) : "", d.server.restarts ? d.server.restarts + " restarts" : ""].filter(Boolean).join(" · ")) +
+    tile("Server usage", d.pod.mem ? esc(d.pod.mem) + " RAM" : "n/a",
+      [d.pod.cpu ? esc(d.pod.cpu) + " CPU" : "", d.pod.mem_limit ? "limit " + esc(d.pod.mem_limit) : ""].filter(Boolean).join(" · ")) +
+    tile("Host usage", d.node.cpu_pct ? `${esc(d.node.cpu_pct)} CPU` : "n/a",
+      d.node.mem_pct ? esc(d.node.mem) + " RAM (" + esc(d.node.mem_pct) + ")" + (d.node.name ? " · " + esc(d.node.name) : "") : "") +
+    tile("Active world", d.world.name ? esc(d.world.name) : "n/a",
+      d.world.size ? fmtBytes(d.world.size) : "");
+}
+
+/* ---------- sign-in, first-run setup, server install ---------- */
+function showGate(st) {
+  $("gate").style.display = "";
+  document.querySelectorAll("nav, .tab, #installCard, header .row").forEach(el => el.style.display = "none");
+  const setup = st ? st.needs_setup : $("gateSetup").style.display !== "none";
+  $("gateSetup").style.display = setup ? "" : "none";
+  $("gateLogin").style.display = setup ? "none" : "";
+  const code = new URLSearchParams(location.search).get("setup");
+  if (code && !$("setupCode").value) $("setupCode").value = code;
+  (setup ? ($("setupCode").value ? $("setupPw") : $("setupCode")) : $("loginPw")).focus();
+}
+async function authPost(path, body, msgId) {
+  const r = await fetch(path, { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body) });
+  const t = await r.json().catch(() => ({}));
+  if (!r.ok) { $(msgId).style.color = "#fca5a5"; $(msgId).textContent = t.error || ("HTTP " + r.status); return false; }
+  return true;
+}
+async function doSetup() {
+  if ($("setupPw").value !== $("setupPw2").value) { $("setupMsg").style.color = "#fca5a5"; $("setupMsg").textContent = "Passwords don't match."; return; }
+  if (await authPost("auth/setup", { code: $("setupCode").value.trim(), password: $("setupPw").value }, "setupMsg")) {
+    history.replaceState(null, "", location.pathname); boot();
+  }
+}
+async function doLogin() {
+  if (await authPost("auth/login", { password: $("loginPw").value }, "loginMsg")) { $("loginPw").value = ""; boot(); }
+}
+async function doLogout() { await fetch("auth/logout", { method: "POST" }); location.reload(); }
+async function openAccount() {
+  $("pwMsg").textContent = ""; $("pwCur").value = $("pwNew").value = "";
+  try { $("acctVer").textContent = "v" + (await apiJson("auth/status")).version; } catch {}
+  $("acctDlg").showModal();
+}
+async function changePw() {
+  if (await authPost("auth/password", { current: $("pwCur").value, password: $("pwNew").value }, "pwMsg")) {
+    $("pwMsg").style.color = "#4ade80"; $("pwMsg").textContent = "Password changed. Other devices are signed out.";
+  }
+}
+async function checkInstall() {
+  try { INSTALL = await apiJson("api/install"); } catch { return; }
+  const need = !INSTALL.installed;
+  $("installCard").style.display = need ? "" : "none";
+  document.querySelectorAll("nav, .tab").forEach(el => el.style.display = need ? "none" : "");
+  if (!need) document.querySelectorAll(".tab").forEach(el => el.style.display = "");
+  $("eulaLink").href = INSTALL.eula_url; $("privacyLink").href = INSTALL.privacy_url;
+  $("eulaBox").checked = INSTALL.eula_accepted;
+  $("installUnsupported").style.display = INSTALL.unsupported ? "" : "none";
+  $("installUnsupported").textContent = INSTALL.unsupported || "";
+  $("installBtn").disabled = !!INSTALL.unsupported;
+  const upd = INSTALL.installed && INSTALL.latest && INSTALL.version && INSTALL.latest !== INSTALL.version;
+  $("updateBtn").style.display = upd ? "" : "none";
+  $("updateBtn").textContent = upd ? `Update to ${INSTALL.latest}` : "";
+}
+async function installServer() {
+  if (!$("eulaBox").checked) { showBar("Tick the box to accept the Minecraft EULA first.", "err"); return; }
+  await post("server/install", { accept_eula: true });
+}
+async function updateServer() {
+  if (!(await ask("Update the Bedrock server?", `Stops the server, downloads ${INSTALL.latest} from minecraft.net and starts it again. Worlds and settings are kept.`, "Update"))) return;
+  post("server/update", {});
+}
+async function togglePower() {
+  const stopping = LAST && LAST.server.want;
+  if (stopping && !(await ask("Stop the server?", "Players will be disconnected. The world is saved first.", "Stop", true))) return;
+  post(stopping ? "server/stop" : "server/start", {});
+}
+async function boot() {
+  let st;
+  try { st = await apiJson("auth/status"); } catch { showBar("Can't reach Blockhost.", "err"); return; }
+  if (!st.authed) { showGate(st); return; }
+  $("gate").style.display = "none";
+  document.querySelectorAll("header .row").forEach(el => el.style.display = "");
+  await checkInstall();
+  refresh(); loadDash();
+  if (!STARTED) {
+    STARTED = true;
+    setInterval(() => { if ($("gate").style.display === "none") refresh(); }, 4000);
+    setInterval(() => { if ($("gate").style.display === "none" && INSTALL && !INSTALL.installed) checkInstall(); }, 4000);
+  }
+}
+boot();
+setInterval(() => { if (document.querySelector('[data-tab="worlds"]').classList.contains("active")) loadDash(); }, 15000);
+setInterval(() => { if (document.querySelector('[data-tab="activity"]').classList.contains("active")) loadLogs(); }, 8000);
+</script>
+</body>
+</html>

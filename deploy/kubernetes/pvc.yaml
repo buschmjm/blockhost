@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: blockhost-data
+  namespace: blockhost
+spec:
+  accessModes: ["ReadWriteOnce"]
+  # storageClassName: local-path   # k3s default; omit to use your cluster's default class
+  resources:
+    requests:
+      storage: 20Gi

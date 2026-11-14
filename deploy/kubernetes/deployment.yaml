@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: blockhost
+  namespace: blockhost
+  labels: { app: blockhost }
+spec:
+  replicas: 1                 # one server per data volume; never scale this up
+  strategy: { type: Recreate } # the old pod must release the world before the new one starts
+  selector:
+    matchLabels: { app: blockhost }
+  template:
+    metadata:
+      labels: { app: blockhost }
+    spec:
+      terminationGracePeriodSeconds: 90   # time to save the world on shutdown
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        runAsNonRoot: true
+      nodeSelector:
+        kubernetes.io/arch: amd64          # Mojang only ships x86_64 Linux builds
+      containers:
+        - name: blockhost
+          image: ghcr.io/buschmjm/blockhost:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            # "true" only if you have read and accept https://www.minecraft.net/eula
+            - name: BLOCKHOST_ACCEPT_EULA
+              value: "false"
+            - name: BLOCKHOST_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: blockhost-admin, key: password, optional: true }
+          ports:
+            - { name: web, containerPort: 8080, protocol: TCP }
+            - { name: game, containerPort: 19132, protocol: UDP }
+            - { name: game-v6, containerPort: 19133, protocol: UDP }
+          readinessProbe:
+            httpGet: { path: /auth/status, port: web }
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /auth/status, port: web }
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          resources:
+            requests: { cpu: 500m, memory: 1Gi }
+            limits: { memory: 6Gi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+          volumeMounts:
+            - { name: data, mountPath: /data }
+      volumes:
+        - name: data
+          persistentVolumeClaim: { claimName: blockhost-data }

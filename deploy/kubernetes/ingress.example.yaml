@@ -1,0 +1,21 @@
+# Optional: HTTPS for the web page. Not included in kustomization.yaml; copy and edit.
+# Assumes an ingress controller and cert-manager with a ClusterIssuer named letsencrypt.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: blockhost
+  namespace: blockhost
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+spec:
+  rules:
+    - host: blockhost.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: { name: blockhost-web, port: { number: 8080 } }
+  tls:
+    - hosts: [blockhost.example.com]
+      secretName: blockhost-tls

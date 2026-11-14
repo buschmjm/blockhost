@@ -1,0 +1,10 @@
+.git
+.github
+dist
+build
+tests
+docs
+deploy
+skills
+**/__pycache__
+*.pyc

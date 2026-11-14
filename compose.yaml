@@ -1,0 +1,24 @@
+# docker compose up -d   then open http://localhost:8080
+# The first-run setup code is printed in `docker compose logs blockhost`.
+services:
+  blockhost:
+    image: ghcr.io/buschmjm/blockhost:latest
+    # build: .            # or build it yourself from this repo
+    container_name: blockhost
+    restart: unless-stopped
+    ports:
+      - "8080:8080/tcp"     # web page. Put HTTPS in front of it before exposing it to the internet.
+      - "19132:19132/udp"   # Bedrock game port (IPv4)
+      - "19133:19133/udp"   # Bedrock game port (IPv6)
+    environment:
+      # Set to "true" only if you have read and accept the Minecraft EULA: https://www.minecraft.net/eula
+      # Otherwise leave it out and accept it on the web page.
+      BLOCKHOST_ACCEPT_EULA: "false"
+      # Optional: set the admin password here instead of using the setup code.
+      # BLOCKHOST_PASSWORD: "change-me-please"
+    volumes:
+      - blockhost-data:/data
+    stop_grace_period: 90s   # gives the server time to save the world
+
+volumes:
+  blockhost-data:

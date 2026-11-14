@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "blockhost"
+dynamic = ["version"]
+description = "Host and manage a Minecraft Bedrock Edition server from a web page: worlds, mods, players."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+dependencies = []
+classifiers = [
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: Microsoft :: Windows",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3",
+  "Topic :: Games/Entertainment",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.6"]
+
+[project.scripts]
+blockhost = "blockhost.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/buschmjm/blockhost"
+Issues = "https://github.com/buschmjm/blockhost/issues"
+
+[tool.setuptools]
+packages = ["blockhost"]
+
+[tool.setuptools.package-data]
+blockhost = ["ui/*"]
+
+[tool.setuptools.dynamic]
+version = { attr = "blockhost.__version__" }
+
+[tool.ruff]
+line-length = 140
+target-version = "py310"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B"]
+ignore = ["E501", "B008"]
