@@ -116,6 +116,18 @@
   .mf input[type=number] { width: 6rem; background: #1d1f21; border: 2px solid var(--border); color: var(--text); border-radius: 3px; padding: 0.3rem 0.45rem; font-size: 0.88rem; }
   .mf input.dirty, .mf input.chg { border-color: var(--amber); }
   .mf .was { color: var(--amber); font-size: 0.7rem; margin-left: 0.3rem; cursor: pointer; }
+  .joins { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 0.7rem; }
+  .join { border: 2px solid var(--border); border-radius: 3px; padding: 0.75rem 0.9rem; background: #26282a; box-shadow: inset 0 2px 0 rgba(255,255,255,0.05); min-width: 0; }
+  .join .k { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); margin-bottom: 0.45rem; }
+  .join .addr { display: flex; align-items: center; gap: 0.5rem; }
+  .join code { flex: 1; min-width: 0; font-size: 1.05rem; font-weight: 600; overflow-wrap: anywhere; color: var(--text); }
+  .join .parts { display: flex; gap: 0.9rem; flex-wrap: wrap; margin-top: 0.45rem; font-size: 0.78rem; color: var(--muted); }
+  .join .parts span { cursor: pointer; } .join .parts span:hover { color: var(--text); }
+  .join .s { font-size: 0.78rem; color: var(--muted); margin-top: 0.4rem; line-height: 1.45; }
+  .join.unset code { color: var(--muted); font-style: italic; font-weight: 400; font-size: 0.92rem; }
+  .netrow { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+  .netstate { font-size: 0.85rem; color: var(--muted); }
+  .netstate.ok { color: #9fe07a; } .netstate.err { color: #e89b94; } .netstate.warn { color: #eec36a; }
 </style>
 </head>
 <body>
@@ -176,10 +188,17 @@
   <button data-tab="activity" onclick="showTab(this)">Activity</button>
   <button data-tab="players" onclick="showTab(this)">Players</button>
   <button data-tab="world" onclick="showTab(this)">World</button>
+  <button data-tab="network" onclick="showTab(this)">Network</button>
 </nav>
 
 <!-- ================= WORLDS ================= -->
 <div class="tab active" id="tab-worlds">
+  <div class="card">
+    <h3>Join this server</h3>
+    <p class="hint">In Minecraft: <strong>Play → Servers → Add Server</strong>, then paste the address and port.</p>
+    <div class="joins" id="joins"><div class="empty">Loading…</div></div>
+  </div>
+
   <div class="card">
     <h3>Server dashboard</h3>
     <div class="stats" id="dash"><div class="empty">Loading…</div></div>
@@ -305,6 +324,51 @@
   </div>
 </div>
 
+<!-- ================= NETWORK ================= -->
+<div class="tab" id="tab-network">
+  <div class="card">
+    <h3>Let friends join from anywhere</h3>
+    <p class="hint">Players on your Wi-Fi can always use the local address. For anyone else, pick <strong>one</strong> of these. Try the router first; use the tunnel if the router can't do it.</p>
+  </div>
+  <div class="card">
+    <h3>1. Open the port on your router (UPnP)</h3>
+    <p class="hint">Asks your router to forward UDP port <span id="netPort">19132</span> to this computer, and keeps it open while Blockhost runs. Turning it off closes the port again. Works on most home routers; it can't work if your internet provider shares one public address between customers (CGNAT).</p>
+    <div class="netrow">
+      <button class="btn primary" id="upnpBtn" onclick="toggleUpnp()">Open port</button>
+      <span class="netstate" id="upnpState"></span>
+    </div>
+  </div>
+  <div class="card">
+    <h3>2. Use a free playit.gg tunnel</h3>
+    <p class="hint">Works behind any router, including CGNAT. Blockhost downloads playit's agent and you link it to a free <a href="https://playit.gg" target="_blank" rel="noopener">playit.gg</a> account once. Players connect through playit's servers, so there's a little extra delay. playit.gg is a separate service with its own terms.</p>
+    <div class="netrow">
+      <button class="btn primary" id="tunnelBtn" onclick="tunnelAction('start')">Set up tunnel</button>
+      <button class="btn" id="tunnelStop" style="display:none" onclick="tunnelAction('stop')">Turn off</button>
+      <button class="btn danger" id="tunnelUnlink" style="display:none" onclick="unlinkTunnel()">Unlink</button>
+      <span class="netstate" id="tunnelState"></span>
+    </div>
+    <div id="tunnelClaim" class="pathbox" style="display:none"></div>
+    <p class="hint" id="tunnelHelp" style="display:none; margin-top:0.6rem"></p>
+  </div>
+  <div class="card">
+    <h3>3. I set it up myself</h3>
+    <p class="hint">Already forwarded the port by hand, or have your own domain? Enter the address players should use. This takes priority over 1 and 2 on the dashboard.</p>
+    <div class="row">
+      <input type="text" id="manualAddr" placeholder="mc.example.com:19132" maxlength="260" />
+      <button class="btn" onclick="saveManual()">Save</button>
+      <button class="btn" onclick="fillPublicIp()">Use my public IP</button>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Check it works</h3>
+    <p class="hint">Asks <a href="https://mcsrvstat.us" target="_blank" rel="noopener">mcsrvstat.us</a>, a public Minecraft status service, to reach your external address from the internet. Testing from your own network often fails even when friends can join, so this is the reliable check.</p>
+    <div class="netrow">
+      <button class="btn" id="checkBtn" onclick="checkReach()">Test from the internet</button>
+      <span class="netstate" id="checkState"></span>
+    </div>
+  </div>
+</div>
+
 <dialog id="confirmDlg">
   <h3 id="dlgTitle" style="margin-top:0"></h3>
   <p id="dlgBody"></p>
@@ -425,6 +489,7 @@ function showTab(btn) {
   document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.id === "tab-" + btn.dataset.tab));
   if (btn.dataset.tab === "activity") loadLogs();
   if (btn.dataset.tab === "world") loadWorld();
+  if (btn.dataset.tab === "network") loadNet();
 }
 
 function ask(title, body, okLabel="Confirm", danger=false) {
@@ -1354,6 +1419,134 @@ async function saveFile() {
   $("fileMsg").textContent = "Saved." + (t.active ? " Restart the server (top right) to apply it." : "");
 }
 
+/* ---------- join addresses + network setup ---------- */
+let NET = null;
+function copyText(text, label) {
+  const done = () => showBar(`${label} copied: ${text}`, "ok");
+  if (navigator.clipboard && window.isSecureContext) { navigator.clipboard.writeText(text).then(done, () => fallbackCopy(text, done)); }
+  else fallbackCopy(text, done);
+}
+function fallbackCopy(text, done) {
+  const ta = document.createElement("textarea"); ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand("copy"); done(); } catch { showBar("Couldn't copy. Select the text and copy it by hand.", "err"); }
+  ta.remove();
+}
+const COPY_SVG = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>`;
+function joinBox(id, title, host, port, sub, unsetText) {
+  if (!host) return `<div class="join unset"><div class="k">${title}</div><div class="addr"><code>${esc(unsetText)}</code></div>${sub ? `<div class="s">${sub}</div>` : ""}</div>`;
+  const full = `${host}:${port}`;
+  return `<div class="join"><div class="k">${title}</div>
+    <div class="addr"><code>${esc(full)}</code><button class="btn icon" title="Copy address" onclick="copyJoin('${id}','full')">${COPY_SVG}Copy</button></div>
+    <div class="parts"><span onclick="copyJoin('${id}','host')" title="Copy">Address: <strong>${esc(host)}</strong></span><span onclick="copyJoin('${id}','port')" title="Copy">Port: <strong>${port}</strong></span></div>
+    ${sub ? `<div class="s">${sub}</div>` : ""}</div>`;
+}
+function copyJoin(id, part) {
+  const b = id === "local" ? NET.local : NET.external;
+  const v = part === "host" ? b.host : part === "port" ? String(b.port) : `${b.host}:${b.port}`;
+  copyText(v, part === "host" ? "Address" : part === "port" ? "Port" : "Server address");
+}
+function renderJoins() {
+  const L = NET.local, E = NET.external;
+  const src = { manual: "Set by you on the Network tab.", playit: "Through your playit.gg tunnel.", upnp: "Port opened on your router (UPnP)." }[E.source] || "";
+  const localSub = L.container ? "Running in a container: this may be the container's address. Set <code>BLOCKHOST_LAN_ADDRESS</code> to your computer's address." : "For players on the same Wi-Fi or network.";
+  const extSub = E.host ? `${src} For players anywhere.` : `${E.note ? esc(E.note) + " " : ""}<a href="#" onclick="openNetTab();return false">Set it up</a> so friends outside your network can join.`;
+  $("joins").innerHTML =
+    joinBox("local", "Local network", L.host, L.port, localSub, "Couldn't detect this computer's address") +
+    joinBox("external", "Internet", E.host, E.port, extSub, "Not set up yet");
+}
+function openNetTab() { showTab(document.querySelector('[data-tab="network"]')); }
+async function loadJoins() {
+  try { NET = await apiJson("api/network"); } catch { return; }
+  renderJoins();
+  if (document.querySelector('[data-tab="network"]').classList.contains("active")) renderNet();
+}
+async function loadNet() {
+  await loadJoins(); renderNet();
+  if (NET && ((NET.upnp.enabled && NET.upnp.status === "working") || (NET.tunnel.enabled && !["online", "off", "error"].includes(NET.tunnel.status)))) netPoll();
+}
+function setState(id, text, cls) { const el = $(id); el.textContent = text; el.className = "netstate" + (cls ? " " + cls : ""); }
+function renderNet() {
+  if (!NET) return;
+  $("netPort").textContent = NET.local.port;
+  const u = NET.upnp;
+  $("upnpBtn").textContent = u.enabled ? "Close port" : "Open port";
+  $("upnpBtn").className = "btn " + (u.enabled ? "" : "primary");
+  if (!u.enabled) setState("upnpState", "Off");
+  else if (u.status === "open") setState("upnpState", `Open via ${u.method}: ${u.public_ip}:${u.public_port}`, "ok");
+  else if (u.status === "cgnat") setState("upnpState", `Router opened the port, but your provider uses CGNAT (router's address ${u.router_ip} isn't your public ${u.public_ip || "address"}). Use the tunnel instead.`, "warn");
+  else if (u.status === "failed") setState("upnpState", "Didn't work: " + u.error, "err");
+  else setState("upnpState", "Talking to your router…", "warn");
+  const t = NET.tunnel;
+  const active = t.enabled && t.status !== "off" && t.status !== "error";
+  $("tunnelBtn").style.display = active ? "none" : "";
+  $("tunnelBtn").disabled = !t.supported;
+  $("tunnelBtn").textContent = t.linked ? "Turn on tunnel" : "Set up tunnel";
+  $("tunnelStop").style.display = active ? "" : "none";
+  $("tunnelUnlink").style.display = t.linked ? "" : "none";
+  $("tunnelClaim").style.display = t.claim_url ? "" : "none";
+  if (t.claim_url) $("tunnelClaim").innerHTML = `<a href="${esc(t.claim_url)}" target="_blank" rel="noopener">${esc(t.claim_url)}</a>`;
+  const help = $("tunnelHelp");
+  help.style.display = t.status === "needs_tunnel" ? "" : "none";
+  help.innerHTML = `On <a href="${esc(t.dashboard_url)}" target="_blank" rel="noopener">playit.gg</a>, add a tunnel: type <strong>Minecraft Bedrock</strong>, local address <code>127.0.0.1</code>, local port <code>${t.local_port}</code>, using the Blockhost agent. This page picks up its address within a minute.`;
+  const st = {
+    off: [t.supported ? (t.linked ? "Linked, turned off" : "Off") : "playit's agent isn't available for this system", ""],
+    starting: ["Starting…", "warn"], downloading: [t.detail || "Downloading…", "warn"],
+    claiming: [t.detail || "Open the link below to link your playit.gg account", "warn"],
+    needs_tunnel: ["Linked. One more step:", "warn"],
+    online: [`Online: ${t.address}`, "ok"], disabled: [t.detail, "err"], error: ["Didn't work: " + t.error, "err"],
+  }[t.status] || [t.status, ""];
+  setState("tunnelState", st[0], st[1]);
+  if (document.activeElement !== $("manualAddr")) $("manualAddr").value = NET.manual || "";
+}
+async function netPost(path, body) {
+  const r = await fetch(path, { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body || {}) });
+  const t = await r.json().catch(() => ({}));
+  if (!r.ok) { showBar(t.error || "request failed", "err"); return null; }
+  return t;
+}
+async function toggleUpnp() {
+  const on = !(NET && NET.upnp.enabled);
+  const t = await netPost("network/upnp", { enabled: on });
+  if (t) { NET = t; renderJoins(); renderNet(); netPoll(); }
+}
+async function tunnelAction(action) {
+  const t = await netPost("network/tunnel", { action });
+  if (t) { NET = t; renderJoins(); renderNet(); netPoll(); }
+}
+async function unlinkTunnel() {
+  if (await ask("Unlink playit.gg?", "Stops the tunnel and forgets the playit.gg key on this computer. The tunnel stays in your playit.gg account until you delete it there.", "Unlink", true))
+    tunnelAction("unlink");
+}
+async function saveManual() {
+  const t = await netPost("network/external", { address: $("manualAddr").value });
+  if (t) { NET = t; renderJoins(); renderNet(); showBar(t.manual ? "External address saved." : "External address cleared.", "ok"); }
+}
+async function fillPublicIp() {
+  const t = await netPost("network/public-ip", {});
+  if (t) { $("manualAddr").value = `${t.ip}:${NET ? NET.local.port : 19132}`; showBar("Filled in your public IP. Forward UDP port " + (NET ? NET.local.port : 19132) + " on your router to this computer, then press Save.", "ok"); }
+}
+async function checkReach() {
+  $("checkBtn").disabled = true; setState("checkState", "Checking from the internet (up to 20 seconds)…", "warn");
+  const t = await netPost("network/check", {});
+  $("checkBtn").disabled = false;
+  if (!t) { setState("checkState", ""); return; }
+  if (t.reachable === true) setState("checkState", `Reachable: ${t.address} answers from the internet.`, "ok");
+  else if (t.reachable === false) setState("checkState", `Not reachable at ${t.address}: ${t.reason}. Results are cached for about 5 minutes.`, "err");
+  else setState("checkState", "Couldn't run the check: " + t.reason, "warn");
+}
+let netTimer = null, netUntil = 0;
+function netPoll() {
+  netUntil = Date.now() + 15 * 60 * 1000;
+  if (netTimer) return;
+  netTimer = setInterval(async () => {
+    const busy = NET && ((NET.upnp.enabled && NET.upnp.status === "working") ||
+      (NET.tunnel.enabled && !["online", "off", "error"].includes(NET.tunnel.status)));
+    if (!busy || Date.now() > netUntil) { clearInterval(netTimer); netTimer = null; }
+    await loadJoins();
+  }, 3000);
+}
+
 async function loadDash() {
   let d;
   try { d = await apiJson("api/dashboard"); } catch { return; }
@@ -1446,7 +1639,7 @@ async function boot() {
   $("gate").style.display = "none";
   document.querySelectorAll("header .row").forEach(el => el.style.display = "");
   await checkInstall();
-  refresh(); loadDash();
+  refresh(); loadDash(); loadJoins();
   if (!STARTED) {
     STARTED = true;
     setInterval(() => { if ($("gate").style.display === "none") refresh(); }, 4000);
@@ -1454,7 +1647,7 @@ async function boot() {
   }
 }
 boot();
-setInterval(() => { if (document.querySelector('[data-tab="worlds"]').classList.contains("active")) loadDash(); }, 15000);
+setInterval(() => { if (document.querySelector('[data-tab="worlds"]').classList.contains("active")) { loadDash(); loadJoins(); } }, 15000);
 setInterval(() => { if (document.querySelector('[data-tab="activity"]').classList.contains("active")) loadLogs(); }, 8000);
 </script>
 </body>

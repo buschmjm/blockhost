@@ -43,3 +43,7 @@ Stop the container (or use **Download** on a world in the library) and copy the 
 - Keep `--stop-timeout` / `stop_grace_period` at 60s or more so the world saves on shutdown.
 - On ARM hosts (Raspberry Pi, Apple Silicon) the server won't run. Mojang ships x86_64 only.
 - Put HTTPS in front of port 8080 (Caddy, Traefik, nginx) before exposing it beyond your LAN.
+
+## Players over the internet
+
+With the default bridge network, **Open port** (UPnP) can't reach your router; run with `--network host` or use the playit.gg tunnel instead. Set `BLOCKHOST_LAN_ADDRESS` to your computer's LAN address so the dashboard shows the right local address. See [networking.md](networking.md).

@@ -12,6 +12,7 @@
 - **Players.** Allow list, roles (visitor / member / operator), and per-player game mode.
 - **Live world.** Time, weather, difficulty, game rules and a console, without restarting.
 - **Activity.** Who joined and left, plus a problems list that surfaces pack and script errors.
+- **Join addresses.** The dashboard shows the local and internet addresses with copy buttons. One click opens the port on your router (UPnP / NAT-PMP), or sets up a free [playit.gg](https://playit.gg) tunnel when your provider blocks port forwarding (CGNAT). See [docs/networking.md](docs/networking.md).
 
 ## Install
 
@@ -30,7 +31,7 @@ docker run -d --name blockhost -p 8080:8080 -p 19132:19132/udp -v blockhost-data
 docker logs blockhost   # shows the one-time setup code
 ```
 
-Open http://localhost:8080, enter the setup code, choose a password, accept the Minecraft EULA, and the server downloads and starts. Players connect to your machine's address on port **19132**.
+Open http://localhost:8080, enter the setup code, choose a password, accept the Minecraft EULA, and the server downloads and starts. Players on your network connect to your machine's address on port **19132**; the dashboard shows it with a copy button. For friends over the internet, see [docs/networking.md](docs/networking.md).
 
 ## Requirements
 

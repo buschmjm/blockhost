@@ -34,6 +34,10 @@ UDP 19132 is the Bedrock game protocol. It's Mojang's server, not Blockhost's co
 
 Bedrock add-ons can include JavaScript that runs inside the Bedrock server's script sandbox. Only install mods from sources you trust.
 
+## Internet access
+
+Blockhost doesn't open anything on your router or contact a tunnel service until you press the button on the **Network** tab. The router port forward is removed when you turn it off or stop Blockhost. The playit.gg key is stored in `<data>/playit/playit.toml`, readable only by your user; anyone with it can run tunnels on your playit.gg account, so treat it like a password. [networking.md](networking.md) lists every outside service each feature contacts.
+
 ## Reporting
 
 See [SECURITY.md](../SECURITY.md).

@@ -41,3 +41,7 @@ If you already run an SSO proxy (oauth2-proxy, Authelia, Authentik) in front of 
 - The pod is pinned to `kubernetes.io/arch: amd64`.
 - `terminationGracePeriodSeconds: 90` gives the server time to save on shutdown.
 - Back up the PVC (Velero, Longhorn snapshots, or the **Download** button per world).
+
+## Join addresses
+
+Set `BLOCKHOST_LAN_ADDRESS` in the Deployment to the `blockhost-game` Service's address so the dashboard shows it. Router UPnP doesn't work from pod networking; use the playit.gg tunnel or enter the address yourself on the Network tab. See [networking.md](networking.md).

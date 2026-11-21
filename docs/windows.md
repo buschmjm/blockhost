@@ -13,7 +13,7 @@ Keep the console window open while you host. Closing it, or pressing **Ctrl+C** 
 - **Same home network:** in Minecraft, go to **Play → Servers → Add Server**, and enter this PC's local address (run `ipconfig`; look for IPv4 Address, e.g. `192.168.1.20`) with port `19132`.
 - **Same PC:** use address `127.0.0.1`. If the Microsoft Store version of Minecraft can't see a server on the same PC, run this once in an admin PowerShell:
   `CheckNetIsolation.exe LoopbackExempt -a -n="Microsoft.MinecraftUWP_8wekyb3d8bbwe"`
-- **Friends over the internet:** forward **UDP 19132** on your router to this PC, then give friends your public IP. Only do this if you understand port forwarding; see [security.md](security.md).
+- **Friends over the internet:** open the **Network** tab and press **Open port** (your router forwards UDP 19132 for you), or set up the free playit.gg tunnel if that doesn't work. The dashboard then shows the internet address to share. See [networking.md](networking.md) and [security.md](security.md).
 
 ## Managing from your phone
 

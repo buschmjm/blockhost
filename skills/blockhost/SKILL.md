@@ -76,7 +76,7 @@ kubectl -n blockhost rollout status deploy/blockhost --timeout=180s
 1. `curl -s http://<host>:8080/auth/status` returns JSON with `"version"`.
 2. After the EULA is accepted, the web page shows **Server online** within ~2 minutes (first download is ~100 MB). Logs contain `Server started.`
 3. UDP 19132 is listening: `ss -ulnp | grep 19132` (Linux), `Get-NetUDPEndpoint -LocalPort 19132` (Windows), or the Service has an address (Kubernetes).
-4. Tell the user how players connect: the machine's LAN IP (or LoadBalancer IP) and port 19132, via Play → Servers → Add Server. Consoles (Xbox, PlayStation, Switch) can't add custom servers.
+4. Tell the user how players connect: the **Join this server** card on the Worlds tab shows the local address (and the internet address once set up) with copy buttons; players use Play → Servers → Add Server. Consoles (Xbox, PlayStation, Switch) can't add custom servers. In containers, set `BLOCKHOST_LAN_ADDRESS` so the local address is right.
 
 ## Operate
 
@@ -91,7 +91,7 @@ kubectl -n blockhost rollout status deploy/blockhost --timeout=180s
 |---|---|
 | "server exited during startup" | Activity tab → Problems; logs/server.log. On Linux: missing libcurl. Port 19132 already in use by another server. |
 | Install says platform unsupported | ARM or macOS. Needs x86_64 Windows/Linux. |
-| Players can't connect from outside | Router forward UDP 19132 (ask first), or the Kubernetes Service has no external IP. |
+| Players can't connect from outside | Network tab (ask the user first; it changes their router or uses a third-party service): **Open port** for UPnP, or the playit.gg tunnel if the router refuses or the provider uses CGNAT. Then **Test from the internet**. See docs/networking.md. |
 | Same-PC Minecraft can't connect (Windows) | Use 127.0.0.1; for the Store version run the `CheckNetIsolation` loopback command from docs/windows.md. |
 | Mod fails to load | Mods tab "missing dependency" tag; upload the missing pack. Activity → Problems shows pack errors. |
 | Web page 401 loop | Session expired or Blockhost restarted; sign in again. |

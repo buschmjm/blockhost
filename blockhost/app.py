@@ -18,6 +18,8 @@ from urllib.parse import parse_qs, urlparse
 from . import __version__
 from . import bds
 from . import mod_settings as ms
+from . import network
+from .tunnel import PlayitTunnel
 from .auth import Auth, cookie_header, read_cookie
 from .config import Config
 
@@ -32,11 +34,13 @@ SERVER: bds.BedrockProcess = None  # type: ignore[assignment]
 SERVER_DATA = LIBRARY = ACTIVE_WORLD_DIR = ACTIVE_POINTER = TMP_DIR = PACKS_DIR = ""
 ALLOWLIST_PATH = PERMISSIONS_PATH = ""
 TWEAKS: ms.Store = None  # type: ignore[assignment]
+NET: network.PortForwarder = None  # type: ignore[assignment]
+TUNNEL: PlayitTunnel = None  # type: ignore[assignment]
 
 
 def configure(cfg: Config, auth_mode: str = "password") -> None:
     global CFG, AUTH, SERVER, SERVER_DATA, LIBRARY, ACTIVE_WORLD_DIR, ACTIVE_POINTER, TMP_DIR
-    global PACKS_DIR, ALLOWLIST_PATH, PERMISSIONS_PATH, TWEAKS
+    global PACKS_DIR, ALLOWLIST_PATH, PERMISSIONS_PATH, TWEAKS, NET, TUNNEL
     CFG = cfg
     AUTH = Auth(cfg, mode=auth_mode)
     SERVER_DATA = cfg.server_dir
@@ -49,6 +53,8 @@ def configure(cfg: Config, auth_mode: str = "password") -> None:
     PERMISSIONS_PATH = os.path.join(SERVER_DATA, "permissions.json")
     TWEAKS = ms.Store(LIBRARY, PACKS_DIR, None, None)
     SERVER = bds.BedrockProcess(SERVER_DATA, os.path.join(cfg.logs_dir, "server.log"))
+    NET = network.PortForwarder(server_port)
+    TUNNEL = PlayitTunnel(cfg.data_dir, cfg.logs_dir, server_port)
 
 
 # ---------------------------------------------------------------- server ---
@@ -705,6 +711,62 @@ def read_dashboard() -> dict:
         out["world"] = {"name": meta.get("name", active),
                         "size": dir_size(ACTIVE_WORLD_DIR) if os.path.isdir(ACTIVE_WORLD_DIR) else 0}
     return out
+
+
+# --------------------------------------------------------------- network ---
+
+
+def server_port() -> int:
+    try:
+        port = int(bds.Properties(SERVER_DATA).read().get("server-port", network.DEFAULT_PORT))
+    except (ValueError, OSError):
+        return network.DEFAULT_PORT
+    return port if 1 <= port <= 65535 else network.DEFAULT_PORT
+
+
+def split_address(address: str, default_port: int) -> tuple[str, int]:
+    """'host:port' -> (host, port). A bare host gets default_port."""
+    host, sep, port = (address or "").strip().rpartition(":")
+    if sep and port.isdigit() and host:
+        return host, int(port)
+    return (address or "").strip(), default_port
+
+
+_ADDR_RE = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9.\-]{0,251}[A-Za-z0-9])?")
+
+
+def validate_external_address(value: str) -> tuple[str, str | None]:
+    value = (value or "").strip()
+    if not value:
+        return "", None
+    host, port = split_address(value, server_port())
+    if not _ADDR_RE.fullmatch(host) or not 1 <= port <= 65535:
+        return "", "enter a host name or IP address, optionally with :port"
+    return f"{host}:{port}", None
+
+
+def network_info() -> dict:
+    port = server_port()
+    lan = network.lan_ip()
+    fw = NET.snapshot()
+    tn = TUNNEL.snapshot()
+    manual = CFG.get("external_address", "") or ""
+    local = {"host": lan or "", "port": port,
+             "container": network.in_container() and not os.environ.get("BLOCKHOST_LAN_ADDRESS")}
+    external: dict = {"host": "", "port": 0, "source": "", "note": ""}
+    if manual:
+        external["host"], external["port"] = split_address(manual, port)
+        external["source"] = "manual"
+    elif tn.get("status") == "online" and tn.get("address"):
+        external["host"], external["port"] = split_address(tn["address"], port)
+        external["source"] = "playit"
+    elif fw.get("status") == "open" and fw.get("public_ip"):
+        external.update(host=fw["public_ip"], port=fw.get("public_port") or port, source="upnp")
+    elif fw.get("status") == "cgnat":
+        external["note"] = ("Your internet provider shares one public address between customers (CGNAT), "
+                            "so port forwarding can't reach you. Use the playit.gg tunnel instead.")
+    return {"local": local, "external": external, "upnp": {**fw, "enabled": bool(CFG.get("upnp_enabled"))},
+            "tunnel": {**tn, "enabled": bool(CFG.get("playit_enabled"))}, "manual": manual}
 
 
 # -------------------------------------------------------------- allowlist ---
@@ -1612,6 +1674,9 @@ class Handler(BaseHTTPRequestHandler):
         if url.path == "/api/dashboard":
             self._json(200, _DASH_C.get(read_dashboard))
             return
+        if url.path == "/api/network":
+            self._json(200, network_info())
+            return
         if url.path == "/api/world":
             if OP["running"]:
                 self._json(409, {"error": "another operation is in progress"})
@@ -1943,6 +2008,59 @@ class Handler(BaseHTTPRequestHandler):
             self._json(400 if err else 200, {"error": err} if err else {"ok": True, "lines": lines})
             return
 
+        if url.path == "/network/upnp":
+            on = data.get("enabled") is True
+            CFG.set(upnp_enabled=on)
+            if on:
+                NET.start()
+            else:
+                NET.stop(remove=True)
+            self._json(200, network_info())
+            return
+
+        if url.path == "/network/tunnel":
+            action = str(data.get("action", ""))
+            if action == "start":
+                if not TUNNEL.snapshot()["supported"]:
+                    self._json(400, {"error": "playit's agent isn't available for this system"})
+                    return
+                CFG.set(playit_enabled=True)
+                TUNNEL.begin_setup()
+            elif action in ("stop", "unlink"):
+                CFG.set(playit_enabled=False)
+                (TUNNEL.unlink if action == "unlink" else TUNNEL.stop)()
+            else:
+                self._json(400, {"error": "action must be start, stop or unlink"})
+                return
+            self._json(200, network_info())
+            return
+
+        if url.path == "/network/external":
+            value, err = validate_external_address(str(data.get("address", "")))
+            if err:
+                self._json(400, {"error": err})
+                return
+            CFG.set(external_address=value)
+            self._json(200, network_info())
+            return
+
+        if url.path == "/network/public-ip":
+            ip = network.public_ip()
+            if not ip:
+                self._json(502, {"error": "couldn't look up your public IP address"})
+                return
+            self._json(200, {"ip": ip})
+            return
+
+        if url.path == "/network/check":
+            ext = network_info()["external"]
+            if not ext["host"]:
+                self._json(400, {"error": "no external address is set up yet"})
+                return
+            ok, why = network.check_reachable(f"{ext['host']}:{ext['port']}")
+            self._json(200, {"reachable": ok, "reason": why, "address": f"{ext['host']}:{ext['port']}"})
+            return
+
         self._json(404, {"error": "not found"})
 
 
@@ -2018,6 +2136,10 @@ def serve(cfg: Config, host: str, port: int, *, auth_mode: str = "password", aut
     SERVER.reap_orphan()
     if autostart and bds.is_installed(SERVER_DATA):
         threading.Thread(target=SERVER.start, daemon=True).start()
+    if cfg.get("upnp_enabled"):
+        NET.start()
+    if cfg.get("playit_enabled") and TUNNEL.linked():
+        TUNNEL.begin_setup()
     if on_ready:
         on_ready(httpd)
     try:
@@ -2027,4 +2149,6 @@ def serve(cfg: Config, host: str, port: int, *, auth_mode: str = "password", aut
     finally:
         print("Stopping the Bedrock server...", flush=True)
         SERVER.stop()
+        NET.stop(remove=True)
+        TUNNEL.stop()
         httpd.server_close()
