@@ -319,6 +319,19 @@ def test_network_api(running_app, router, monkeypatch):
     assert c.req("POST", "/network/check", {})[0] == 400
     assert c.req("POST", "/network/tunnel", {"action": "nope"})[0] == 400
 
+    # With nothing set up, the Internet address falls back to the detected public IP.
+    monkeypatch.setattr(network, "public_ip", lambda timeout=6: "93.184.216.34")
+    app._PUBLIC_IP.update(ip="", at=0.0)
+    info = c.req("GET", "/api/network")[1]
+    assert info["external"] == {"host": "93.184.216.34", "port": 19132, "source": "auto", "note": ""}
+    calls = []
+    monkeypatch.setattr(network, "check_reachable", lambda addr, timeout=20: calls.append(addr) or (False, "no answer"))
+    st, out = c.req("POST", "/network/check", {})
+    assert st == 200 and out["reachable"] is False and out["address"] == "93.184.216.34:19132" and out["checked_at"]
+    c.req("POST", "/network/check", {})  # cached
+    c.req("POST", "/network/check", {"force": True})
+    assert len(calls) == 2
+
 
 def test_split_address():
     from blockhost import app

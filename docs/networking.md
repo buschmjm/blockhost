@@ -3,7 +3,7 @@
 The **Worlds** tab shows two join addresses, each with a copy button:
 
 - **Local network:** this computer's address on your Wi-Fi or LAN, plus the game port (19132 unless you changed `server-port`). Anyone on the same network can join with it right away.
-- **Internet:** the address for everyone else. It reads "Not set up yet" until you set up one of the options below on the **Network** tab.
+- **Internet:** the address for everyone else. Until you set up one of the options below on the **Network** tab, it shows your public IP, detected automatically. A status line under it says whether that address actually answers from the internet (checked through [mcsrvstat.us](https://mcsrvstat.us) every few minutes). Your public IP only works for friends once UDP 19132 is forwarded to this computer.
 
 Players add either one in Minecraft under **Play → Servers → Add Server** (Windows, Android, iOS). Xbox, PlayStation and Switch can't add custom servers.
 

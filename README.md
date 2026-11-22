@@ -9,10 +9,11 @@
 - **Hosts the server for you.** Downloads Mojang's official Bedrock Dedicated Server (after you accept the Minecraft EULA), runs it, restarts it if it crashes, and updates it with one click while keeping your worlds.
 - **World library.** Upload `.mcworld` files or whole world folders, switch between worlds, create new ones from a seed with a step-by-step wizard, and download backups.
 - **Mods.** Upload `.mcaddon` / `.mcpack` files, turn them on per world (required packs come along automatically), and change mod values with simple forms: mob health and damage, spawn rates, item stack sizes and durability, recipes on/off, loot and villager trades.
-- **Players.** Allow list, roles (visitor / member / operator), and per-player game mode.
+- **Players.** Everyone who has joined, with their last login. Block troublemakers (kicked on every join), allow list, roles (visitor / member / operator) and per-player game mode.
+- **Grief log.** An optional built-in add-on records who places lava, lights fires or places TNT, and where.
 - **Live world.** Time, weather, difficulty, game rules and a console, without restarting.
 - **Activity.** Who joined and left, plus a problems list that surfaces pack and script errors.
-- **Join addresses.** The dashboard shows the local and internet addresses with copy buttons. One click opens the port on your router (UPnP / NAT-PMP), or sets up a free [playit.gg](https://playit.gg) tunnel when your provider blocks port forwarding (CGNAT). See [docs/networking.md](docs/networking.md).
+- **Join addresses.** The dashboard shows the local and internet addresses with copy buttons, and checks from the internet whether friends can actually reach you. One click opens the port on your router (UPnP / NAT-PMP), or sets up a free [playit.gg](https://playit.gg) tunnel when your provider blocks port forwarding (CGNAT). See [docs/networking.md](docs/networking.md).
 
 ## Install
 

@@ -32,7 +32,7 @@ Issues = "https://github.com/buschmjm/blockhost/issues"
 packages = ["blockhost"]
 
 [tool.setuptools.package-data]
-blockhost = ["ui/*"]
+blockhost = ["ui/*", "addons/grief-logger/*", "addons/grief-logger/scripts/*"]
 
 [tool.setuptools.dynamic]
 version = { attr = "blockhost.__version__" }

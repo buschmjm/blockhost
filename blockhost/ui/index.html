@@ -286,13 +286,19 @@
 <!-- ================= PLAYERS ================= -->
 <div class="tab" id="tab-players">
   <div class="card">
-    <h3>Allow list</h3>
-    <p class="hint">Only these gamertags can join. Use the exact Xbox or Microsoft account name. Changes apply right away, no restart needed.</p>
+    <h3>Players</h3>
+    <p class="hint">Everyone who has joined, newest first, plus anyone you add to the allow list. The allow list only keeps other people out when it's turned on in server settings. <strong>Block</strong> kicks a player now and every time they try to join. Use the exact Xbox or Microsoft account name.</p>
     <div class="row" style="margin-bottom:0.9rem">
       <input type="text" id="player" placeholder="Gamertag" maxlength="32" onkeydown="if(event.key==='Enter')addPlayer()" />
       <button class="btn primary" onclick="addPlayer()">Add player</button>
     </div>
     <div id="players"><div class="empty">Loading…</div></div>
+  </div>
+  <div class="card">
+    <h3>Lava, fire and TNT</h3>
+    <p class="hint">Turn on the Grief Logger add-on to record who places lava, lights fires or places TNT, and where. Turning it on or off restarts the server for about a minute.</p>
+    <div class="row" style="margin-bottom:0.9rem"><button class="btn" id="griefBtn" onclick="toggleGrief()">Turn on</button><span class="hint" id="griefState"></span></div>
+    <div id="grief"></div>
   </div>
 </div>
 
@@ -629,20 +635,47 @@ function renderPacks(s) {
 function renderPlayers(s) {
   const roles = s.roles || {};
   const online = new Set((DASH && DASH.players) || []);
-  $("players").innerHTML = s.allowlist.map(n => `
-    <div class="player"><span><strong>${esc(n)}</strong>${online.has(n) ? ' <span class="hint" style="color:var(--accent)">● online</span>' : ''}</span>
+  const allowed = new Set(s.allowlist.map(n => n.toLowerCase()));
+  const blocked = new Set((s.blocked || []).map(n => n.toLowerCase()));
+  const rows = [], have = new Set();
+  (s.seen || []).forEach(r => { rows.push(r); have.add(r.name.toLowerCase()); });
+  [...s.allowlist, ...(s.blocked || [])].forEach(n => { if (!have.has(n.toLowerCase())) { rows.push({ name: n }); have.add(n.toLowerCase()); } });
+  const when = t => t ? new Date(t.replace(" ", "T") + "Z").toLocaleString() : "";
+  $("players").innerHTML = rows.map(r => { const n = r.name, on = allowed.has(n.toLowerCase()), bl = blocked.has(n.toLowerCase()); return `
+    <div class="player"><span><strong>${esc(n)}</strong>${online.has(n) ? ' <span class="hint" style="color:var(--accent)">● online</span>' : ''}${bl ? ' <span class="hint" style="color:#e5534b">● blocked</span>' : ''}
+      <div class="hint" style="margin:0.15rem 0 0">${r.last_seen ? `Last login ${esc(when(r.last_join || r.last_seen))} · first seen ${esc(when(r.first_seen))} · ${r.joins || 0} logins` : "Hasn't joined yet"}${on ? " · on allow list" : ""}</div></span>
       <span style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap">
         <select title="Player role" onchange="setRole('${esc(n)}', this.value)">
-          ${[["visitor","Visitor"],["member","Member"],["operator","Admin (Operator)"]].map(([r,label]) => `<option value="${r}" ${(roles[n]||"member")===r?"selected":""}>${label}</option>`).join("")}
+          ${[["visitor","Visitor"],["member","Member"],["operator","Admin (Operator)"]].map(([v,label]) => `<option value="${v}" ${(roles[n]||"member")===v?"selected":""}>${label}</option>`).join("")}
         </select>
         <select title="Set game mode (player must be online)" onchange="if(this.value){setPlayerMode('${esc(n)}', this.value); this.value='';}">
           <option value="">Game mode…</option>
           <option value="survival">Survival</option><option value="creative">Creative</option>
           <option value="adventure">Adventure</option><option value="spectator">Spectator</option>
         </select>
-        <button class="btn danger icon" title="Remove player" onclick="removePlayer('${esc(n)}')">${IC.trash}</button>
+        ${bl ? `<button class="btn" title="Let this player join again" onclick="post('players/unblock', { name: '${esc(n)}' })">Unblock</button>`
+             : `<button class="btn danger" title="Kick this player now and every time they join" onclick="blockPlayer('${esc(n)}')">Block</button>`}
+        ${on ? `<button class="btn danger icon" title="Remove from allow list" onclick="removePlayer('${esc(n)}')">${IC.trash}</button>`
+             : `<button class="btn" title="Add to allow list" onclick="post('allowlist/add', { name: '${esc(n)}' })">Allow</button>`}
       </span>
-    </div>`).join("") || '<div class="empty">No players on the allow list yet.</div>';
+    </div>`; }).join("") || '<div class="empty">Nobody has joined yet.</div>';
+  $("griefBtn").textContent = s.grief_logger ? "Turn off" : "Turn on";
+  $("griefState").textContent = s.grief_logger ? "Grief Logger is on." : "Grief Logger is off.";
+  const label = { lava: "Lava", fire: "Fire", tnt: "TNT" };
+  $("grief").innerHTML = (s.grief || []).map(g => `
+    <div class="player"><span><strong>${esc(g.player)}</strong> · ${esc(label[g.action] || g.action)}
+      <div class="hint" style="margin:0.15rem 0 0">${esc(when(g.time))} · ${esc(g.dim)} ${g.pos.join(" ")}</div></span></div>`).join("")
+    || (s.grief_logger ? '<div class="empty">Nothing recorded yet.</div>' : "");
+  GRIEF_ON = !!s.grief_logger;
+}
+let GRIEF_ON = false;
+async function toggleGrief() {
+  const on = !GRIEF_ON;
+  if (await ask(on ? "Turn on Grief Logger?" : "Turn off Grief Logger?", "The server restarts for about a minute. Everyone online is disconnected.", on ? "Turn on" : "Turn off"))
+    post("players/grief-logger", { enabled: on });
+}
+async function blockPlayer(n) {
+  if (await ask("Block player?", `${n} is kicked now and every time they try to join. You can unblock them later.`, "Block", true)) post("players/block", { name: n });
 }
 
 // ---------------------------------------------------------------- world ---
@@ -1448,12 +1481,28 @@ function copyJoin(id, part) {
 }
 function renderJoins() {
   const L = NET.local, E = NET.external;
-  const src = { manual: "Set by you on the Network tab.", playit: "Through your playit.gg tunnel.", upnp: "Port opened on your router (UPnP)." }[E.source] || "";
+  const src = { manual: "Set by you on the Network tab.", playit: "Through your playit.gg tunnel.", upnp: "Port opened on your router (UPnP).", auto: "Your public IP, detected automatically. Friends can only use it once the port is forwarded." }[E.source] || "";
   const localSub = L.container ? "Running in a container: this may be the container's address. Set <code>BLOCKHOST_LAN_ADDRESS</code> to your computer's address." : "For players on the same Wi-Fi or network.";
-  const extSub = E.host ? `${src} For players anywhere.` : `${E.note ? esc(E.note) + " " : ""}<a href="#" onclick="openNetTab();return false">Set it up</a> so friends outside your network can join.`;
+  const extSub = E.host ? `<span id="extLive">· checking…</span><br>${src} For players anywhere. <a href="#" onclick="extLive(true);return false">Test again</a>` : `${E.note ? esc(E.note) + " " : ""}<a href="#" onclick="openNetTab();return false">Set it up</a> so friends outside your network can join.`;
   $("joins").innerHTML =
     joinBox("local", "Local network", L.host, L.port, localSub, "Couldn't detect this computer's address") +
     joinBox("external", "Internet", E.host, E.port, extSub, "Not set up yet");
+  if (E.host) extLive(false);
+}
+let EXT_LIVE = "";
+async function extLive(force) {
+  if (!$("extLive")) return;
+  if (!force && EXT_LIVE && Date.now() - EXT_LIVE.at < 60000) { $("extLive").innerHTML = EXT_LIVE.html; return; }
+  if (force) $("extLive").textContent = "· checking…";
+  const r = await fetch("network/check", { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({ force: !!force }) });
+  const t = await r.json().catch(() => ({}));
+  const at = t.checked_at ? " (checked " + new Date(t.checked_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) + ")" : "";
+  const html = !r.ok ? "· " + esc(t.error || "check failed")
+    : t.reachable === true ? `<span style="color:#9fe07a">● reachable from the internet${at}</span>`
+    : t.reachable === false ? `<span style="color:#e89b94">● not reachable from the internet${at}${t.reason ? ": " + esc(t.reason) : ""}</span>`
+    : "· couldn't check: " + esc(t.reason || "");
+  EXT_LIVE = { at: Date.now(), html };
+  if ($("extLive")) $("extLive").innerHTML = html;
 }
 function openNetTab() { showTab(document.querySelector('[data-tab="network"]')); }
 async function loadJoins() {

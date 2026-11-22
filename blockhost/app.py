@@ -19,6 +19,7 @@ from . import __version__
 from . import bds
 from . import mod_settings as ms
 from . import network
+from .players import PlayerTracker
 from .tunnel import PlayitTunnel
 from .auth import Auth, cookie_header, read_cookie
 from .config import Config
@@ -36,11 +37,12 @@ ALLOWLIST_PATH = PERMISSIONS_PATH = ""
 TWEAKS: ms.Store = None  # type: ignore[assignment]
 NET: network.PortForwarder = None  # type: ignore[assignment]
 TUNNEL: PlayitTunnel = None  # type: ignore[assignment]
+PLAYERS: PlayerTracker = None  # type: ignore[assignment]
 
 
 def configure(cfg: Config, auth_mode: str = "password") -> None:
     global CFG, AUTH, SERVER, SERVER_DATA, LIBRARY, ACTIVE_WORLD_DIR, ACTIVE_POINTER, TMP_DIR
-    global PACKS_DIR, ALLOWLIST_PATH, PERMISSIONS_PATH, TWEAKS, NET, TUNNEL
+    global PACKS_DIR, ALLOWLIST_PATH, PERMISSIONS_PATH, TWEAKS, NET, TUNNEL, PLAYERS
     CFG = cfg
     AUTH = Auth(cfg, mode=auth_mode)
     SERVER_DATA = cfg.server_dir
@@ -53,6 +55,8 @@ def configure(cfg: Config, auth_mode: str = "password") -> None:
     PERMISSIONS_PATH = os.path.join(SERVER_DATA, "permissions.json")
     TWEAKS = ms.Store(LIBRARY, PACKS_DIR, None, None)
     SERVER = bds.BedrockProcess(SERVER_DATA, os.path.join(cfg.logs_dir, "server.log"))
+    PLAYERS = PlayerTracker(LIBRARY, kick=lambda cmd: SERVER.send(cmd))
+    SERVER.listeners.append(PLAYERS.on_line)
     NET = network.PortForwarder(server_port)
     TUNNEL = PlayitTunnel(cfg.data_dir, cfg.logs_dir, server_port)
 
@@ -745,6 +749,68 @@ def validate_external_address(value: str) -> tuple[str, str | None]:
     return f"{host}:{port}", None
 
 
+_PUBLIC_IP: dict = {"ip": "", "at": 0.0}
+_REACH: dict = {}  # address -> (checked_at, reachable, reason)
+
+
+def cached_public_ip() -> str:
+    """Public IPv4, looked up at most every 10 minutes (it can change on home connections)."""
+    if time.time() - _PUBLIC_IP["at"] > 600:
+        _PUBLIC_IP["at"] = time.time()
+        _PUBLIC_IP["ip"] = network.public_ip() or _PUBLIC_IP["ip"]
+    return _PUBLIC_IP["ip"]
+
+
+def check_reachable_cached(address: str, force: bool = False) -> tuple[bool | None, str, float]:
+    hit = _REACH.get(address)
+    if hit and not force and time.time() - hit[0] < 300:
+        return hit[1], hit[2], hit[0]
+    ok, why = network.check_reachable(address)
+    now = time.time()
+    if ok is not None:
+        _REACH[address] = (now, ok, why)
+    return ok, why, now
+
+
+GRIEF_ADDON_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "addons", "grief-logger")
+
+
+def grief_addon_uuid() -> str:
+    with open(os.path.join(GRIEF_ADDON_DIR, "manifest.json"), encoding="utf-8") as fh:
+        return str(json.load(fh)["header"]["uuid"]).lower()
+
+
+def active_pack_uuids() -> set[str]:
+    return {str(e.get("pack_id", "")).lower() for lst in read_world_pack_entries(ACTIVE_WORLD_DIR).values()
+            for e in lst if e.get("pack_id")}
+
+
+def grief_logger_enabled() -> bool:
+    try:
+        return grief_addon_uuid() in active_pack_uuids()
+    except (OSError, ValueError, KeyError):
+        return False
+
+
+def set_grief_logger(enabled: bool) -> str | None:
+    """Copy the bundled Grief Logger into the mod library and add/remove it on the active world."""
+    if not get_active_id():
+        return "no active world yet"
+    uuid_ = grief_addon_uuid()
+    if enabled:
+        dest = os.path.join(PACKS_DIR, uuid_)
+        if os.path.exists(dest):
+            shutil.rmtree(dest)
+        shutil.copytree(GRIEF_ADDON_DIR, dest)
+        bust_packs_cache()
+    keep = active_pack_uuids()
+    keep = keep | {uuid_} if enabled else keep - {uuid_}
+    if not op_start("update add-ons"):
+        return "another operation is in progress"
+    threading.Thread(target=run_set_packs_active, args=(keep,), daemon=True).start()
+    return None
+
+
 def network_info() -> dict:
     port = server_port()
     lan = network.lan_ip()
@@ -765,6 +831,8 @@ def network_info() -> dict:
     elif fw.get("status") == "cgnat":
         external["note"] = ("Your internet provider shares one public address between customers (CGNAT), "
                             "so port forwarding can't reach you. Use the playit.gg tunnel instead.")
+    elif cached_public_ip():
+        external.update(host=cached_public_ip(), port=port, source="auto")
     return {"local": local, "external": external, "upnp": {**fw, "enabled": bool(CFG.get("upnp_enabled"))},
             "tunnel": {**tn, "enabled": bool(CFG.get("playit_enabled"))}, "manual": manual}
 
@@ -879,12 +947,14 @@ def read_permissions() -> tuple[list[dict], str | None]:
 
 
 def player_roles_for(entries: list[dict]) -> dict[str, str]:
-    """gamertag -> role for allowlisted players; no permissions entry = server default (member)."""
+    """gamertag -> role for allowlisted and seen players; no permissions entry = server default (member)."""
     perms, err = read_permissions()
     if err:
         return {}
     by_xuid = {str(p["xuid"]): str(p.get("permission", "member")) for p in perms}
     roles: dict[str, str] = {}
+    for r in PLAYERS.seen():
+        roles[r["name"]] = by_xuid.get(str(r.get("xuid", "")), "member")
     for e in entries:
         name = str(e["name"])
         xuid = str(e.get("xuid") or _XUID_CACHE.get(name.lower(), ""))
@@ -911,6 +981,8 @@ def resolve_xuid(name: str) -> str | None:
     key = name.lower()
     if key not in _XUID_CACHE:
         allowlist_entries()  # refreshes cache from allowlist xuids
+    if key not in _XUID_CACHE and PLAYERS.xuid_for(name):
+        _XUID_CACHE[key] = PLAYERS.xuid_for(name)
     if key not in _XUID_CACHE:
         _xuid_from_logs(name)
     return _XUID_CACHE.get(key)
@@ -1638,6 +1710,10 @@ class Handler(BaseHTTPRequestHandler):
                 "tweaks": TWEAKS.counts(),
                 "allowlist": names,
                 "roles": roles,
+                "seen": PLAYERS.seen(),
+                "blocked": PLAYERS.blocked(),
+                "grief": PLAYERS.grief(),
+                "grief_logger": grief_logger_enabled(),
             })
             return
         if url.path == "/worlds/packs":
@@ -1948,6 +2024,17 @@ class Handler(BaseHTTPRequestHandler):
             self._json(400 if err else 200, {"error": err} if err else {"ok": True})
             return
 
+        if url.path in ("/players/block", "/players/unblock"):
+            name = str(data.get("name", ""))
+            err = PLAYERS.block(name) if url.path.endswith("/block") else PLAYERS.unblock(name)
+            self._json(400 if err else 200, {"error": err} if err else {"ok": True})
+            return
+
+        if url.path == "/players/grief-logger":
+            err = set_grief_logger(bool(data.get("enabled")))
+            self._json(409 if err else 200, {"error": err} if err else {"ok": True, "restarting": True})
+            return
+
         if url.path == "/players/gamemode":
             err = set_player_gamemode(str(data.get("name", "")), str(data.get("mode", "")))
             self._json(400 if err else 200, {"error": err} if err else {"ok": True})
@@ -2057,8 +2144,10 @@ class Handler(BaseHTTPRequestHandler):
             if not ext["host"]:
                 self._json(400, {"error": "no external address is set up yet"})
                 return
-            ok, why = network.check_reachable(f"{ext['host']}:{ext['port']}")
-            self._json(200, {"reachable": ok, "reason": why, "address": f"{ext['host']}:{ext['port']}"})
+            addr = f"{ext['host']}:{ext['port']}"
+            ok, why, at = check_reachable_cached(addr, force=bool(data.get("force")))
+            self._json(200, {"reachable": ok, "reason": why, "address": addr,
+                             "checked_at": datetime.fromtimestamp(at, timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")})
             return
 
         self._json(404, {"error": "not found"})

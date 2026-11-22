@@ -229,6 +229,7 @@ class BedrockProcess:
         self._lock = threading.RLock()
         self._stdin_lock = threading.Lock()
         self._log_fh = None
+        self.listeners: list = []  # callables fed every server output line
         if log_path:
             os.makedirs(os.path.dirname(log_path), exist_ok=True)
             self._rotate(log_path)
@@ -373,6 +374,11 @@ class BedrockProcess:
             if not line:
                 continue
             self._log(line)
+            for fn in list(self.listeners):
+                try:
+                    fn(line)
+                except Exception:  # noqa: BLE001 - a listener must never stop the log pump
+                    pass
             if "Server started." in line:
                 self.ready = True
         code = proc.wait()

@@ -72,6 +72,15 @@ class Client:
             return e.code, json.loads(e.read() or b"{}")
 
 
+@pytest.fixture(autouse=True)
+def _offline_public_ip(monkeypatch):
+    """Never ask a real "what is my IP" service from tests."""
+    from blockhost import app, network
+    monkeypatch.setattr(network, "public_ip", lambda timeout=6: None)
+    app._PUBLIC_IP.update(ip="", at=0.0)
+    app._REACH.clear()
+
+
 @pytest.fixture()
 def running_app(tmp_path):
     """Blockhost serving a fake Bedrock server on a random port."""

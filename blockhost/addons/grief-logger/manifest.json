@@ -1,0 +1,15 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "Blockhost Grief Logger",
+    "description": "Logs who places lava, fire and TNT. Server-side only.",
+    "uuid": "72b1727f-1cec-4bc8-9116-4deaf3c1159c",
+    "version": [1, 0, 0],
+    "min_engine_version": [1, 21, 0]
+  },
+  "modules": [
+    { "type": "data", "uuid": "ab71b8bf-3e5c-4215-9776-a9d49816d08e", "version": [1, 0, 0] },
+    { "type": "script", "language": "javascript", "uuid": "a8df1c1f-6320-4493-9560-c8b6ab3e6e9d", "version": [1, 0, 0], "entry": "scripts/main.js" }
+  ],
+  "dependencies": [ { "module_name": "@minecraft/server", "version": "2.7.0" } ]
+}
